@@ -1,14 +1,18 @@
-print("main.py started")
+print("MAIN: starting")
 
 import sys
 from pathlib import Path
-sys.path.append(str(Path(__file__).resolve().parent))
+print("MAIN: file =", __file__)
+print("MAIN: before path =", sys.path[:3])
 
-print("about to import ui.main_window")
+sys.path.append(str(Path(__file__).resolve().parent))
+print("MAIN: after path add =", sys.path[:3])
+
+print("MAIN: importing ui.main_window...")
 from ui.main_window import run_app
-print("imported run_app from:", run_app)
+print("MAIN: imported run_app =", run_app)
 
 if __name__ == "__main__":
-    print("calling run_app() now")
+    print("MAIN: calling run_app()")
     run_app()
-    print("run_app() returned")
+    print("MAIN: run_app() returned")
