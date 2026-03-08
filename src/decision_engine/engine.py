@@ -1,54 +1,155 @@
-import numpy as np
+from __future__ import annotations
+from dataclasses import dataclass
+from typing import List, Dict
+from ..domain.disease_model import DiseaseModel
+from ..domain.macro_state import MacroState
+from ..domain.action import Action
 
 
-ACTIONS = ["Medication A", "Lifestyle Intervention", "Medication B"]
-STATES = ["S1", "S2", "S3"]
+@dataclass(frozen=True)
+class ActionScore:
+    """
+    Result of evaluating a single action from the current macro-state.
+
+    action:            the action that was evaluated.
+    immediate_utility: r(P, s, α) — short-term benefit of this action.
+    long_term_value:   γ * Σ_s' P_α(s'|s) * V(P_α, s') — expected future value.
+    total_score:       immediate_utility + long_term_value — used for ranking.
+    """
+
+    action: Action
+    immediate_utility: float
+    long_term_value: float
+    total_score: float
 
 
-# Placeholder transition matrices per action (toy example)
-TRANSITIONS = {
-    "Medication A": np.array([
-        [0.70, 0.20, 0.10],
-        [0.20, 0.60, 0.20],
-        [0.10, 0.30, 0.60],
-    ]),
-    "Lifestyle Intervention": np.array([
-        [0.65, 0.25, 0.10],
-        [0.25, 0.55, 0.20],
-        [0.15, 0.35, 0.50],
-    ]),
-    "Medication B": np.array([
-        [0.60, 0.25, 0.15],
-        [0.20, 0.55, 0.25],
-        [0.10, 0.25, 0.65],
-    ]),
-}
+class DecisionEngine:
+    """
+    Computes and ranks actions for a given macro-state using value iteration.
 
-IMMEDIATE_UTILITY = {
-    "Medication A": 5.0,
-    "Lifestyle Intervention": 3.5,
-    "Medication B": 4.5,
-}
+    For each action α, a separate value table V(P_α, s) is computed under
+    the modified model P_α. At each future state, the best available action
+    is chosen, consistent with the BRD formula:
+
+        V(P, s) = max_α [ r(P, s, α) + γ * Σ_s' P_α(s'|s) * V(P_α, s') ]
+
+    gamma:          discount factor in [0, 1). Lower values favour short-term gains.
+    theta:          convergence threshold for value iteration.
+    max_iterations: safety cap on value iteration loop.
+    """
+
+    def __init__(
+        self,
+        gamma: float = 0.9,
+        theta: float = 1e-6,
+        max_iterations: int = 1000,
+    ) -> None:
+        if not 0.0 <= gamma < 1.0:
+            raise ValueError(f"gamma must be in [0, 1). Got {gamma}.")
+        if theta <= 0.0:
+            raise ValueError(f"theta must be positive. Got {theta}.")
+
+        self.gamma = gamma
+        self.theta = theta
+        self.max_iterations = max_iterations
+
+    def rank_actions(self, macro_state: MacroState, actions: List[Action]) -> List[ActionScore]:
+        """
+        Rank all available actions for the given macro-state.
+        Returns a list of ActionScore sorted best-first.
+        """
+        if not actions:
+            return []
+
+        scores = [self._score_action(macro_state, action, actions) for action in actions]
+        return sorted(scores, key=lambda s: s.total_score, reverse=True)
 
 
-def rank_actions(state: str, discount: float = 0.7):
-    if state not in STATES:
-        raise ValueError(f"Unknown state '{state}'. Use one of: {STATES}")
 
-    s_idx = STATES.index(state)
-    recs = []
+    # Private methods
 
-    for action in ACTIONS:
-        P = TRANSITIONS[action]
-        # simple future proxy: probability of improving (S1) minus worsening (S3)
-        future = float(P[s_idx, 0] - P[s_idx, 2])
-        score = float(IMMEDIATE_UTILITY[action] + discount * future)
+    def _immediate_utility(self, macro_state: MacroState, action: Action) -> float:
+        """
+        r(P, s, α) — immediate utility of applying action in the current state.
+        Currently uses action.immediate_utility directly as a placeholder.
+        This method is the single place to extend reward computation later.
+        """
+        return action.immediate_utility
 
-        row = P[s_idx, :]
-        entropy = -float(np.sum(row * np.log(row + 1e-12)))
-        confidence = max(0.0, 1.0 - (entropy / 1.2))
+    def _value_iteration(self, model: DiseaseModel, actions: List[Action]) -> Dict[str, float]:
+        """
+        Compute V(P_α, s) for all states under the modified model P_α.
 
-        recs.append({"action": action, "score": score, "confidence": confidence})
+        At each future state the best available action is selected (max_α),
+        consistent with the BRD formula:
 
-    recs.sort(key=lambda r: r["score"], reverse=True)
-    return recs
+            V(P_α, s) = max_α [ r(α) + γ * Σ_s' P_α(s'|s) * V(P_α, s') ]
+        """
+        states = model.states
+        V: Dict[str, float] = {s: 0.0 for s in states}
+
+        for _ in range(self.max_iterations):
+            delta = 0.0 # Reset delta to track change in each iteration
+
+            for state in states:
+                # Find the best action value for this state (max_α)
+                best = max(
+                    self._action_value(state, action, model, V)
+                    for action in actions
+                )
+                delta = max(delta, abs(best - V[state]))
+                V[state] = best
+
+            if delta < self.theta:
+                break
+
+        return V
+
+    def _action_value(
+        self,
+        state: str,
+        action: Action,
+        model: DiseaseModel,
+        V: Dict[str, float],
+    ) -> float:
+        """
+        Compute the value of taking action α in state s under model P_α:
+
+            r(α) + γ * Σ_s' P_α(s'|s) * V(s')
+        """
+        modified_model = action.apply(model)
+        row = modified_model.row(state)
+        future = sum(row[i] * V[s] for i, s in enumerate(modified_model.states))
+        return action.immediate_utility + self.gamma * future
+
+    def _score_action(
+        self,
+        macro_state: MacroState,
+        action: Action,
+        actions: List[Action],
+    ) -> ActionScore:
+        """
+        Score a single action from the current macro-state.
+
+        1. Apply α to get the modified model P_α.
+        2. Run value iteration under P_α with all actions to get V(P_α, s).
+        3. Compute the full score from the current state s:
+               score = r(P, s, α) + γ * Σ_s' P_α(s'|s) * V(P_α, s')
+        """
+        modified_model = action.apply(macro_state.model)
+        value_table = self._value_iteration(modified_model, actions)
+
+        current = macro_state.current_state
+        row = modified_model.row(current)
+
+        immediate = self._immediate_utility(macro_state, action)
+        future = self.gamma * sum(
+            row[i] * value_table[s] for i, s in enumerate(modified_model.states)
+        )
+
+        return ActionScore(
+            action=action,
+            immediate_utility=immediate,
+            long_term_value=future,
+            total_score=immediate + future,
+        )
