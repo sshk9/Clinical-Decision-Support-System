@@ -169,8 +169,25 @@ class PatientView(QWidget):
             QPushButton:hover {{ background: #23A8A8; }}
         """)
         apply_btn.clicked.connect(self._on_apply_action)
+
+        simulate_btn = QPushButton("Simulate Progression")
+        simulate_btn.setFixedHeight(36)
+        simulate_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {SIDEBAR_BG};
+                color: white;
+                border-radius: 6px;
+                padding: 0 20px;
+                font-size: 13px;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{ background: #2E3F45; }}
+        """)
+        simulate_btn.clicked.connect(self._on_simulate_progression)
+
         action_row.addWidget(self._action_combo)
         action_row.addWidget(apply_btn)
+        action_row.addWidget(simulate_btn)
         action_row.addStretch()
         root.addLayout(action_row)
 
@@ -332,6 +349,18 @@ class PatientView(QWidget):
         if idx < 0:
             return
         self._patient = self._patient.apply_action(self._actions[idx])
+        self._refresh()
+
+    def _on_simulate_progression(self) -> None:
+        """Simulate one disease progression step — advances the current micro-state s."""
+        if self._patient is None:
+            return
+        new_macro = self._patient.macro_state.simulate_step()
+        self._patient = Patient(
+            patient_id=self._patient.patient_id,
+            name=self._patient.name,
+            macro_state=new_macro,
+        )
         self._refresh()
 
 
