@@ -221,6 +221,16 @@ class PatientView(QWidget):
         """)
         root.addWidget(self._history_list)
 
+        # Transition impact panel
+        root.addWidget(_label("Transition Impact — Last Action", 15, bold=True))
+        self._transition_card = _card()
+        self._transition_layout = QVBoxLayout(self._transition_card)
+        self._transition_layout.setContentsMargins(16, 12, 16, 12)
+        self._transition_layout.setSpacing(4)
+        self._transition_placeholder = _label("No action applied yet.", muted=True)
+        self._transition_layout.addWidget(self._transition_placeholder)
+        root.addWidget(self._transition_card)
+
     def load_patient(self, patient: Patient, actions: list[Action]) -> None:
         """Load a patient and compute ranked actions."""
         self._patient = patient
@@ -262,6 +272,58 @@ class PatientView(QWidget):
         self._history_list.clear()
         for line in self._patient.macro_state.summary():
             self._history_list.addItem(line)
+
+        # Transition impact panel
+        self._update_transition_panel()
+
+    def _update_transition_panel(self) -> None:
+        """Show before/after transition probabilities from the last history step."""
+        # Clear existing rows
+        while self._transition_layout.count():
+            item = self._transition_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+        if not self._patient or not self._patient.macro_state.history:
+            self._transition_placeholder = _label("No action applied yet.", muted=True)
+            self._transition_layout.addWidget(self._transition_placeholder)
+            return
+
+        last_step = self._patient.macro_state.history[-1]
+        before = last_step.model_before.as_dict()
+        after  = last_step.model_after.as_dict()
+        states = last_step.model_before.states
+
+        # Header
+        self._transition_layout.addWidget(
+            _label(f"Action: {last_step.action.name}  |  State at time: {last_step.state}", bold=True)
+        )
+
+        # One row per (from_state, to_state) pair where probability changed
+        changed = False
+        for from_state in states:
+            for to_state in states:
+                p_before = before[from_state][to_state]
+                p_after  = after[from_state][to_state]
+                if abs(p_after - p_before) > 1e-9:
+                    changed = True
+                    diff = p_after - p_before
+                    arrow = "↑" if diff > 0 else "↓"
+                    color = SUCCESS if diff > 0 else DANGER
+                    row_text = (
+                        f"{from_state} → {to_state}:   "
+                        f"{p_before:.3f}  →  {p_after:.3f}  {arrow}"
+                    )
+                    lbl = _label(row_text)
+                    lbl.setStyleSheet(
+                        f"color: {color}; background: transparent; border: none; font-size: 13px;"
+                    )
+                    self._transition_layout.addWidget(lbl)
+
+        if not changed:
+            self._transition_layout.addWidget(
+                _label("No transition probabilities changed.", muted=True)
+            )
 
     def _on_apply_action(self) -> None:
         if self._patient is None or not self._actions:
