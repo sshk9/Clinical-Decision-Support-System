@@ -458,24 +458,22 @@ class MainWindow(QMainWindow):
         self._stack.setCurrentIndex(1)
 
     def _load_demo_data(self) -> None:
-        """
-        Load demo patients using the default models and actions.
-        Replaced by database loading once persistence layer is added (week 6).
-        """
-        from ..domain.disease_model import make_simple_progression
+        """Load patients from the database."""
+        from ..infrastructure.database import init_db, seed_data, get_all_patients, load_disease_model, load_actions
         from ..domain.macro_state import MacroState
-        from ..domain.action import make_default_actions
 
-        model = make_simple_progression()
-        actions = make_default_actions()
+        init_db()
+        seed_data()
 
-        patients = [
-            (Patient(patient_id="P001", name="John Smith",
-                     macro_state=MacroState(model=model, current_state="Mild")), actions),
-            (Patient(patient_id="P002", name="Maria Klein",
-                     macro_state=MacroState(model=model, current_state="Severe")), actions),
-            (Patient(patient_id="P003", name="Lucas Mitchell",
-                     macro_state=MacroState(model=model, current_state="Healthy")), actions),
-        ]
+        patients = []
+        for patient_id, full_name, current_state in get_all_patients():
+            model = load_disease_model(patient_id)
+            actions = load_actions(patient_id)
+            patient = Patient(
+                patient_id=patient_id,
+                name=full_name,
+                macro_state=MacroState(model=model, current_state=current_state),
+            )
+            patients.append((patient, actions))
 
         self._management_view.set_patients(patients)
