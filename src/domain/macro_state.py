@@ -1,6 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import List, Tuple
+import numpy as np
 from .disease_model import DiseaseModel
 from .action import Action
 
@@ -58,6 +59,24 @@ class MacroState:
             model=model_after,
             current_state=self.current_state,
             history=self.history + (step,),
+        )
+
+    def simulate_step(self) -> MacroState:
+        """
+        Simulate one disease progression step by sampling from the transition
+        matrix row of the current state.
+
+        This is where the current micro-state s actually changes — the disease
+        evolves according to the probabilities in the current model P.
+        Returns a new MacroState with the updated current state.
+        """
+        row = self.model.row(self.current_state)
+        next_state = np.random.choice(list(self.model.states), p=row)
+
+        return MacroState(
+            model=self.model,
+            current_state=next_state,
+            history=self.history,
         )
 
     def summary(self) -> List[str]:
