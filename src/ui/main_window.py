@@ -11,6 +11,7 @@ from PyQt5.QtGui import QFont, QColor
 from ..domain.patient import Patient
 from ..domain.action import Action
 from ..decision_engine.engine import DecisionEngine, ActionScore
+from ..domain.patient_record import PatientRecord
 
 
 # ---------------------------------------------------------------------------
@@ -310,7 +311,9 @@ class PatientView(QWidget):
         states = summary["states"]
 
         # Header
-        _label(f"Action: {summary['action_name']}  |  State at time: {summary['state']}", bold=True)
+        self._transition_layout.addWidget(
+            _label(f"Action: {summary['action_name']}  |  State at time: {summary['state']}", bold=True)
+        )
 
         # One row per (from_state, to_state) pair where probability changed
         changed = False
@@ -376,7 +379,7 @@ class PatientManagementView(QWidget):
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self._patients: list[tuple[Patient, list[Action]]] = []
+        self._patients: list[PatientRecord] = []
         self._build()
 
     def _build(self) -> None:
@@ -405,19 +408,20 @@ class PatientManagementView(QWidget):
         self._list.itemClicked.connect(self._on_patient_clicked)
         root.addWidget(self._list)
 
-    def set_patients(self, patients: list[tuple[Patient, list[Action]]]) -> None:
-        """Populate the list with (Patient, actions) tuples."""
+    def set_patients(self, patients: list[PatientRecord]) -> None:
+        """Populate the list with PatientRecord objects."""
         self._patients = patients
         self._list.clear()
-        for patient, _ in patients:
-            label = f"{patient.name or 'Unnamed'}  —  ID: {patient.patient_id}  —  State: {patient.current_state}"
+        for record in patients:
+            label = f"{record.patient.name or 'Unnamed'}  —  ID: {record.patient.patient_id}  —  State: {record.patient.current_state}"
             self._list.addItem(label)
 
     def _on_patient_clicked(self, item: QListWidgetItem) -> None:
         idx = self._list.row(item)
         if 0 <= idx < len(self._patients):
-            patient, actions = self._patients[idx]
-            self.patient_selected.emit(patient, actions)
+            record = self._patients[idx]
+            self.patient_selected.emit(record.patient, record.actions)
+
 
 
 # ---------------------------------------------------------------------------
