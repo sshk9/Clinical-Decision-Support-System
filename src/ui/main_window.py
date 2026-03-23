@@ -109,11 +109,11 @@ class PatientView(QWidget):
     Displays current state, ranked actions with scores, and action history.
     """
 
-    def __init__(self, parent: QWidget | None = None) -> None:
+    def __init__(self, engine: DecisionEngine, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._patient: Patient | None = None
         self._actions: list[Action] = []
-        self._engine = DecisionEngine()
+        self._engine = engine
         self._build()
 
     def _build(self) -> None:
@@ -533,8 +533,9 @@ class MainWindow(QMainWindow):
 
         # Content stack
         self._stack = QStackedWidget()
+        self._engine = DecisionEngine()
         self._dashboard_view = DashboardView()
-        self._patient_view = PatientView()
+        self._patient_view = PatientView(engine=self._engine)
         self._management_view = PatientManagementView()
         self._management_view.patient_selected.connect(self._on_patient_selected)
 
