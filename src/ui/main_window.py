@@ -491,6 +491,10 @@ class Sidebar(QWidget):
             btn.setChecked(i == idx)
         self.nav_changed.emit(idx)
 
+    def set_active(self, idx: int) -> None:
+        """Public method to set the active navigation item."""
+        self._on_nav(idx)
+
 
 # ---------------------------------------------------------------------------
 # Main window
@@ -545,7 +549,7 @@ class MainWindow(QMainWindow):
     def _on_patient_selected(self, patient: Patient, actions: list[Action]) -> None:
         """Load selected patient into patient view and navigate to it."""
         self._patient_view.load_patient(patient, actions)
-        self._sidebar._on_nav(1)
+        self._sidebar.set_active(1)
         self._stack.setCurrentIndex(1)
 
     def _load_demo_data(self) -> None:
