@@ -78,6 +78,22 @@ class MacroState:
             current_state=next_state,
             history=self.history,
         )
+    
+    def transition_impact_summary(self):
+        """
+        Returns before/after transition data for the last action applied.
+        Returns None if no actions have been applied yet.
+        """
+        if not self.history:
+            return None
+        last_step = self.history[-1]
+        return {
+            "action_name": last_step.action.name,
+            "state": last_step.state,
+            "before": last_step.model_before.as_dict(),
+            "after": last_step.model_after.as_dict(),
+            "states": last_step.model_before.states,
+        }
 
     def summary(self) -> List[str]:
         """

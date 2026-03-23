@@ -260,10 +260,8 @@ class PatientView(QWidget):
 
         self._header.setText(f"Patient — {self._patient.name or self._patient.patient_id}")
         self._subheader.setText(f"ID: {self._patient.patient_id}")
-        self._state_label.setText(self._patient.current_state)
-        self._model_label.setText(
-            f"{len(self._patient.macro_state.model.states)} states"
-        )
+        self._state_label.setText(self._patient.current_state_label())
+        self._model_label.setText(self._patient.model_size_label())
 
         # Populate action dropdown
         self._action_combo.clear()
@@ -301,20 +299,18 @@ class PatientView(QWidget):
             if item.widget():
                 item.widget().deleteLater()
 
-        if not self._patient or not self._patient.macro_state.history:
+        summary = self._patient.macro_state.transition_impact_summary() if self._patient else None
+        if not self._patient or summary is None:
             self._transition_placeholder = _label("No action applied yet.", muted=True)
             self._transition_layout.addWidget(self._transition_placeholder)
             return
 
-        last_step = self._patient.macro_state.history[-1]
-        before = last_step.model_before.as_dict()
-        after  = last_step.model_after.as_dict()
-        states = last_step.model_before.states
+        before = summary["before"]
+        after  = summary["after"]
+        states = summary["states"]
 
         # Header
-        self._transition_layout.addWidget(
-            _label(f"Action: {last_step.action.name}  |  State at time: {last_step.state}", bold=True)
-        )
+        _label(f"Action: {summary['action_name']}  |  State at time: {summary['state']}", bold=True)
 
         # One row per (from_state, to_state) pair where probability changed
         changed = False

@@ -30,6 +30,14 @@ class Patient:
             macro_state=self.macro_state.apply_action(action),
         )
 
+    def current_state_label(self) -> str:
+        """Returns display string for current state and model size."""
+        return self.current_state
+
+    def model_size_label(self) -> str:
+        """Returns human readable model size for display."""
+        return f"{len(self.macro_state.model.states)} states"
+
     @property
     def current_state(self) -> str:
         """Easy access for the current state s."""
