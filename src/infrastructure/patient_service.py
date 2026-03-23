@@ -1,12 +1,11 @@
 from __future__ import annotations
-from typing import List, Tuple
 from ..domain.patient import Patient
 from ..domain.action import Action
 from ..domain.macro_state import MacroState
 from .database import init_db, seed_data, get_all_patients, load_disease_model, load_actions
+from ..domain.patient_record import PatientRecord
 
-
-def load_patients_with_actions() -> List[Tuple[Patient, List[Action]]]:
+def load_patients_with_actions() -> List[PatientRecord]:
     """
     Initialises the database, seeds demo data, and returns all patients
     with their available actions as domain objects.
@@ -24,6 +23,6 @@ def load_patients_with_actions() -> List[Tuple[Patient, List[Action]]]:
             name=full_name,
             macro_state=MacroState(model=model, current_state=current_state),
         )
-        patients.append((patient, actions))
+        patients.append(PatientRecord(patient=patient, actions=actions))
 
     return patients
