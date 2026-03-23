@@ -554,22 +554,6 @@ class MainWindow(QMainWindow):
         self._stack.setCurrentIndex(1)
 
     def _load_demo_data(self) -> None:
-        """Load patients from the database."""
-        from ..infrastructure.database import init_db, seed_data, get_all_patients, load_disease_model, load_actions
-        from ..domain.macro_state import MacroState
-
-        init_db()
-        seed_data()
-
-        patients = []
-        for patient_id, full_name, current_state in get_all_patients():
-            model = load_disease_model(patient_id)
-            actions = load_actions(patient_id)
-            patient = Patient(
-                patient_id=patient_id,
-                name=full_name,
-                macro_state=MacroState(model=model, current_state=current_state),
-            )
-            patients.append((patient, actions))
-
-        self._management_view.set_patients(patients)
+        """Load patients from the database via the patient service."""
+        from ..infrastructure.patient_service import load_patients_with_actions
+        self._management_view.set_patients(load_patients_with_actions())
