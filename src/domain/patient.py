@@ -9,14 +9,16 @@ class Patient:
     """
     Represents a patient in the system.
 
-    patient_id:  unique identifier for the patient.
-    name:        optional display name shown in the UI.
-    macro_state: the patient's current clinical state (P, s) including full history.
+    patient_id:   unique identifier for the patient.
+    name:         optional display name shown in the UI.
+    macro_state:  the patient's current clinical state (P, s) including full history.
+    disease_name: the name of the disease the patient is being treated for.
     """
 
     patient_id: str
     macro_state: MacroState
     name: str = ""
+    disease_name: str = ""
 
     def __post_init__(self) -> None:
         if not self.patient_id.strip():
@@ -27,11 +29,12 @@ class Patient:
         return Patient(
             patient_id=self.patient_id,
             name=self.name,
+            disease_name=self.disease_name,
             macro_state=self.macro_state.apply_action(action),
         )
 
     def current_state_label(self) -> str:
-        """Returns display string for current state and model size."""
+        """Returns display string for current state."""
         return self.current_state
 
     def model_size_label(self) -> str:
