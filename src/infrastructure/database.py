@@ -249,21 +249,22 @@ def seed_data():
 # Raw query functions
 # ---------------------------------------------------------------------------
 
-def get_all_patients() -> List[Tuple[str, str, str]]:
-    """Returns a list of (patient_id, full_name, current_state)."""
+def get_all_patients() -> List[Tuple[str, str, str, str]]:
+    """Returns a list of (patient_id, full_name, current_state, disease_name)."""
     with get_connection() as conn:
         cursor = conn.execute("""
             SELECT
                 p.id,
                 p.first_name || ' ' || p.last_name as full_name,
-                ds.state_name as current_state
+                ds.state_name as current_state,
+                d.name as disease_name
             FROM patient p
             JOIN patient_status ps ON p.id = ps.patient_id
             JOIN disease_state ds ON ps.current_state_id = ds.id
+            JOIN disease d ON ps.disease_id = d.id
             ORDER BY p.id
         """)
         return cursor.fetchall()
-
 
 def get_model_for_patient(patient_id: str) -> Tuple[List[str], List[List[float]]]:
     """Returns (state_names, transition_matrix) for the patient's active model."""
