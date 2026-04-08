@@ -405,7 +405,7 @@ if __name__ == "__main__":
     print("\nVerification:")
     patients = get_all_patients()
     print(f"Found {len(patients)} patients:")
-    for patient_id, full_name, state in patients:
+    for patient_id, full_name, state, disease_name in patients:
         print(f"  - {patient_id}: {full_name} - {state}")
 
         if patient_id == "P001":
