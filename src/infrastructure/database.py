@@ -113,6 +113,15 @@ def init_db():
             )
         """)
 
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                hashed_password TEXT NOT NULL,
+                salt TEXT NOT NULL
+            )
+        """)
+
         conn.commit()
         print("Database tables initialized successfully")
 
@@ -328,15 +337,11 @@ def get_actions_for_patient(patient_id: str) -> List[Tuple]:
 
 # ---------------------------------------------------------------------------
 # Domain object conversion functions
-# These are the functions the rest of the system should use — they return
-# proper domain objects (DiseaseModel, Action) instead of raw tuples,
-# keeping the rest of the codebase decoupled from the database structure.
 # ---------------------------------------------------------------------------
 
 def load_disease_model(patient_id: str) -> DiseaseModel:
     """
     Load the active disease model for a patient and return a DiseaseModel object.
-    This is what the engine and UI should use instead of get_model_for_patient().
     """
     state_names, matrix = get_model_for_patient(patient_id)
     if not state_names:
@@ -347,9 +352,7 @@ def load_disease_model(patient_id: str) -> DiseaseModel:
 def load_actions(patient_id: str) -> List[Action]:
     """
     Load available actions for a patient and return a list of Action objects.
-    immediate_utility is computed as benefit - risk - cost, consistent with
-    the formula the engine will use in week 3.
-    This is what the engine and UI should use instead of get_actions_for_patient().
+    immediate_utility is computed as benefit - risk - cost.
     """
     rows = get_actions_for_patient(patient_id)
     actions = []
@@ -363,6 +366,29 @@ def load_actions(patient_id: str) -> List[Action]:
             delta=delta or 0.0,
         ))
     return actions
+
+
+# ---------------------------------------------------------------------------
+# User authentication functions
+# ---------------------------------------------------------------------------
+
+def get_user_by_username(username: str):
+    """Returns (hashed_password, salt) or None if user not found."""
+    with get_connection() as conn:
+        cursor = conn.execute(
+            "SELECT hashed_password, salt FROM users WHERE username = ?", (username,)
+        )
+        return cursor.fetchone()
+
+
+def create_user(username: str, hashed_password: str, salt: str) -> None:
+    """Inserts a new user into the database."""
+    with get_connection() as conn:
+        conn.execute(
+            "INSERT INTO users (username, hashed_password, salt) VALUES (?, ?, ?)",
+            (username, hashed_password, salt)
+        )
+        conn.commit()
 
 
 # ---------------------------------------------------------------------------
