@@ -58,7 +58,6 @@ def _label(text: str, size: int = 13, bold: bool = False, muted: bool = False) -
 class DashboardView(QWidget):
     """
     Overview panel — shows summary stats and high-level system status.
-    Charts and live data are placeholders until persistence is added (week 6).
     """
 
     def __init__(self, parent: QWidget | None = None) -> None:
@@ -70,11 +69,9 @@ class DashboardView(QWidget):
         root.setContentsMargins(32, 32, 32, 32)
         root.setSpacing(20)
 
-        # Header
         root.addWidget(_label("Clinical Decision Dashboard", 20, bold=True))
         root.addWidget(_label("Active patients, risk alerts, and model status", muted=True))
 
-        # Stats row
         stats_row = QHBoxLayout()
         stats_row.setSpacing(16)
         for title, value in [
@@ -90,7 +87,6 @@ class DashboardView(QWidget):
             stats_row.addWidget(card)
         root.addLayout(stats_row)
 
-        # Placeholder note
         note = _label(
             "Charts and live statistics will be available once the persistence layer is added (week 6).",
             muted=True,
@@ -134,10 +130,13 @@ class PatientView(QWidget):
         state_layout.setContentsMargins(20, 16, 20, 16)
         state_layout.setSpacing(40)
         self._state_label = _label("—", 22, bold=True)
+        self._disease_label = _label("—", muted=True)
         self._model_label = _label("—", muted=True)
         state_layout.addWidget(_label("Current State:", bold=True))
         state_layout.addWidget(self._state_label)
-        state_layout.addWidget(_label("Disease Model:", bold=True))
+        state_layout.addWidget(_label("Disease:", bold=True))
+        state_layout.addWidget(self._disease_label)
+        state_layout.addWidget(_label("Model:", bold=True))
         state_layout.addWidget(self._model_label)
         state_layout.addStretch()
         root.addWidget(state_card)
@@ -262,6 +261,7 @@ class PatientView(QWidget):
         self._header.setText(f"Patient — {self._patient.name or self._patient.patient_id}")
         self._subheader.setText(f"ID: {self._patient.patient_id}")
         self._state_label.setText(self._patient.current_state_label())
+        self._disease_label.setText(self._patient.disease_name or "Unknown")
         self._model_label.setText(self._patient.model_size_label())
 
         # Populate action dropdown
@@ -294,7 +294,6 @@ class PatientView(QWidget):
 
     def _update_transition_panel(self) -> None:
         """Show before/after transition probabilities from the last history step."""
-        # Clear existing rows
         while self._transition_layout.count():
             item = self._transition_layout.takeAt(0)
             if item.widget():
@@ -310,12 +309,10 @@ class PatientView(QWidget):
         after  = summary["after"]
         states = summary["states"]
 
-        # Header
         self._transition_layout.addWidget(
             _label(f"Action: {summary['action_name']}  |  State at time: {summary['state']}", bold=True)
         )
 
-        # One row per (from_state, to_state) pair where probability changed
         changed = False
         for from_state in states:
             for to_state in states:
@@ -358,6 +355,7 @@ class PatientView(QWidget):
         self._patient = Patient(
             patient_id=self._patient.patient_id,
             name=self._patient.name,
+            disease_name=self._patient.disease_name,
             macro_state=new_macro,
         )
         self._refresh()
@@ -370,10 +368,8 @@ class PatientView(QWidget):
 class PatientManagementView(QWidget):
     """
     Patient list panel — browse and select patients.
-    Full search and filtering will be added once persistence is in place (week 6).
     """
 
-    # Emits the selected Patient and actions to the parent when a patient is clicked.
     from PyQt5.QtCore import pyqtSignal
     patient_selected = pyqtSignal(object, object)
 
@@ -413,7 +409,7 @@ class PatientManagementView(QWidget):
         self._patients = patients
         self._list.clear()
         for record in patients:
-            label = f"{record.patient.name or 'Unnamed'}  —  ID: {record.patient.patient_id}  —  State: {record.patient.current_state}"
+            label = f"{record.patient.name or 'Unnamed'}  —  ID: {record.patient.patient_id}  —  {record.patient.disease_name}  —  State: {record.patient.current_state}"
             self._list.addItem(label)
 
     def _on_patient_clicked(self, item: QListWidgetItem) -> None:
@@ -421,7 +417,6 @@ class PatientManagementView(QWidget):
         if 0 <= idx < len(self._patients):
             record = self._patients[idx]
             self.patient_selected.emit(record.patient, record.actions)
-
 
 
 # ---------------------------------------------------------------------------
@@ -444,7 +439,6 @@ class Sidebar(QWidget):
         layout.setContentsMargins(0, 24, 0, 24)
         layout.setSpacing(4)
 
-        # Logo / title
         title = _label("  CDSS", 16, bold=True)
         title.setStyleSheet(f"color: {ACCENT}; background: transparent; border: none; padding: 8px 16px;")
         layout.addWidget(title)
@@ -479,7 +473,6 @@ class Sidebar(QWidget):
 
         layout.addStretch()
 
-        # Bottom label placeholder for logged-in user
         user_label = _label("  GP User", muted=False)
         user_label.setStyleSheet(f"color: #A8C4C4; background: transparent; border: none; padding: 8px 16px;")
         layout.addWidget(user_label)
@@ -526,12 +519,10 @@ class MainWindow(QMainWindow):
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
 
-        # Sidebar
         self._sidebar = Sidebar()
         self._sidebar.nav_changed.connect(self._on_nav_changed)
         root.addWidget(self._sidebar)
 
-        # Content stack
         self._stack = QStackedWidget()
         self._engine = DecisionEngine()
         self._dashboard_view = DashboardView()
