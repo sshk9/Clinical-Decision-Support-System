@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import (
     QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
     QPushButton, QLabel, QListWidget, QListWidgetItem,
     QStackedWidget, QFrame, QSizePolicy, QTableWidget,
-    QTableWidgetItem, QHeaderView, QComboBox,
+    QTableWidgetItem, QHeaderView, QComboBox, QProgressBar
 )
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont, QColor
@@ -12,6 +12,7 @@ from ..domain.patient import Patient
 from ..domain.action import Action
 from ..decision_engine.engine import DecisionEngine, ActionScore
 from ..domain.patient_record import PatientRecord
+from .comparison_widget import ComparisonWidget
 
 
 # ---------------------------------------------------------------------------
@@ -123,6 +124,15 @@ class PatientView(QWidget):
         root.addWidget(self._header)
         self._subheader = _label("No patient loaded.", muted=True)
         root.addWidget(self._subheader)
+        self._risk_label = _label("Risk Score: —", 13, bold=True)
+        root.addWidget(self._risk_label)
+
+        self._risk_bar = QProgressBar()
+        self._risk_bar.setRange(0, 100)
+        self._risk_bar.setValue(0)
+        self._risk_bar.setFormat("%p%")
+        self._risk_bar.setMaximumHeight(18)
+        root.addWidget(self._risk_bar)
 
         # State card
         state_card = _card()
@@ -223,20 +233,41 @@ class PatientView(QWidget):
         """)
         root.addWidget(self._table)
 
-        # History
-        root.addWidget(_label("Action History", 15, bold=True))
-        self._history_list = QListWidget()
-        self._history_list.setMaximumHeight(140)
-        self._history_list.setStyleSheet(f"""
-            QListWidget {{
+        root.addWidget(_label("Recommendation Explanation", 15, bold=True))
+
+        self._explanation_box = QLabel("No recommendation available.")
+        self._explanation_box.setWordWrap(True)
+        self._explanation_box.setStyleSheet(f"""
+            QLabel {{
                 background: {CARD_BG};
-                border: 1px solid #DDE8E8;
-                border-radius: 8px;
-                font-size: 13px;
+                border: 1px solid #D9E4E8;
+                border-radius: 10px;
+                padding: 12px;
                 color: {TEXT_PRIMARY};
             }}
         """)
-        root.addWidget(self._history_list)
+        root.addWidget(self._explanation_box)
+
+        # History
+        root.addWidget(_label("Action History", 15, bold=True))
+        self._history_table = QTableWidget(0, 3)
+        self._history_table.setHorizontalHeaderLabels(["Step", "State", "Action"])
+        self._history_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self._history_table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self._history_table.setSelectionBehavior(QTableWidget.SelectRows)
+        self._history_table.setMaximumHeight(150)
+
+        self._history_table.setStyleSheet(f"""
+            QTableWidget {{
+                background: {CARD_BG};
+                border: 1px solid #DDE8E8;
+                border-radius: 8px;
+                gridline-color: #EEF3F3;
+                font-size: 13px;
+            }}
+        """)
+
+        root.addWidget(self._history_table)
 
         # Transition impact panel
         root.addWidget(_label("Transition Impact — Last Action", 15, bold=True))
@@ -271,6 +302,26 @@ class PatientView(QWidget):
 
         # Ranked actions table
         scores = self._engine.rank_actions(self._patient.macro_state, self._actions)
+        
+        if scores:
+            best = scores[0]
+            print("DEBUG RISK:", best.risk_score, best.risk_level)
+            self._risk_label.setText(f"Risk Score: {best.risk_score:.1f} ({best.risk_level})")
+            self._risk_bar.setValue(int(best.risk_score))
+            self._explanation_box.setText(best.explanation)
+
+            if best.risk_level == "Low":
+                self._risk_label.setStyleSheet("color: #228B22; font-weight: bold;")
+            elif best.risk_level == "Medium":
+                self._risk_label.setStyleSheet("color: #D48806; font-weight: bold;")
+            else:
+                self._risk_label.setStyleSheet("color: #C62828; font-weight: bold;")
+        else:
+            self._risk_label.setText("Risk Score: —")
+            self._risk_bar.setValue(0)
+            self._explanation_box.setText("No recommendation available.")
+            self._risk_label.setStyleSheet("font-weight: bold;")
+
         self._table.setRowCount(len(scores))
         for row, score in enumerate(scores):
             self._table.setItem(row, 0, QTableWidgetItem(score.action.name))
@@ -285,9 +336,13 @@ class PatientView(QWidget):
             self._table.setItem(row, 3, total_item)
 
         # History
-        self._history_list.clear()
-        for line in self._patient.macro_state.summary():
-            self._history_list.addItem(line)
+        history = self._patient.macro_state.history
+        self._history_table.setRowCount(len(history))
+
+        for i, step in enumerate(history):
+            self._history_table.setItem(i, 0, QTableWidgetItem(f"Step {i+1}"))
+            self._history_table.setItem(i, 1, QTableWidgetItem(step.state))
+            self._history_table.setItem(i, 2, QTableWidgetItem(step.action.name))
 
         # Transition impact panel
         self._update_transition_panel()
@@ -444,7 +499,7 @@ class Sidebar(QWidget):
         layout.addWidget(title)
         layout.addSpacing(16)
 
-        for i, name in enumerate(["Dashboard", "Patients", "Patient Management"]):
+        for i, name in enumerate(["Dashboard", "Patients", "Patient Management", "Analytics"]):
             btn = QPushButton(f"  {name}")
             btn.setCheckable(True)
             btn.setFixedHeight(42)
@@ -529,11 +584,13 @@ class MainWindow(QMainWindow):
         self._patient_view = PatientView(engine=self._engine)
         self._management_view = PatientManagementView()
         self._management_view.patient_selected.connect(self._on_patient_selected)
+        self._comparison_view = ComparisonWidget()
 
-        self._stack.addWidget(self._dashboard_view)   # index 0
-        self._stack.addWidget(self._patient_view)     # index 1
-        self._stack.addWidget(self._management_view)  # index 2
-        root.addWidget(self._stack)
+        self._stack.addWidget(self._dashboard_view)     # index 0
+        self._stack.addWidget(self._patient_view)       # index 1
+        self._stack.addWidget(self._management_view)    # index 2
+        self._stack.addWidget(self._comparison_view)    # index 3
+        root.addWidget(self._stack) 
 
     def _on_nav_changed(self, idx: int) -> None:
         self._stack.setCurrentIndex(idx)

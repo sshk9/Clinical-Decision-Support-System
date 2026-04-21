@@ -21,6 +21,9 @@ class ActionScore:
     immediate_utility: float
     long_term_value: float
     total_score: float
+    risk_score: float
+    risk_level: str
+    explanation: str
 
 
 class DecisionEngine:
@@ -75,6 +78,75 @@ class DecisionEngine:
         This method is the single place to extend reward computation later.
         """
         return action.immediate_utility
+    
+    def _severity_weights(self, states: list[str]) -> dict[str, float]:
+        """
+        Assign increasing severity weights to states based on their order.
+        First state = least severe, last state = most severe.
+        Returns values scaled to 0-100.
+        """
+        if len(states) == 1:
+            return {states[0]: 100.0}
+
+        weights = {}
+        for i, state in enumerate(states):
+            weights[state] = (i / (len(states) - 1)) * 100.0
+        return weights
+
+    def _calculate_risk_score(self, current_state: str, model: DiseaseModel) -> float:
+        """
+        Risk score based on expected severity of next-state probabilities.
+        """
+        row = model.row(current_state)
+        weights = self._severity_weights(list(model.states))
+
+        score = 0.0
+        for i, state in enumerate(model.states):
+            score += row[i] * weights[state]
+
+        return round(score, 1)
+
+    def _risk_level(self, risk_score: float) -> str:
+        if risk_score < 33:
+            return "Low"
+        elif risk_score < 66:
+            return "Medium"
+        return "High"
+
+    def _build_explanation(
+        self,
+        macro_state: MacroState,
+        action: Action,
+        modified_model: DiseaseModel,
+        risk_score: float,
+        risk_level: str,
+    ) -> str:
+        """
+        Build a human-readable explanation for the recommendation.
+        """
+        current = macro_state.current_state
+        row = modified_model.row(current)
+
+        most_likely_index = max(range(len(row)), key=lambda i: row[i])
+        most_likely_state = modified_model.states[most_likely_index]
+        most_likely_prob = row[most_likely_index]
+
+        history_count = len(macro_state.history)
+
+        lines = [
+            f"Current state: {current}.",
+            f"Estimated risk score: {risk_score:.1f}/100 ({risk_level}).",
+            f"Most likely next state after '{action.name}': {most_likely_state} ({most_likely_prob:.2f}).",
+            f"Immediate utility of this action: {action.immediate_utility:.2f}.",
+        ]
+
+        if action.description:
+            lines.append(f"Clinical rationale: {action.description}")
+
+        if history_count > 0:
+            lines.append(f"Previous interventions recorded: {history_count}.")
+
+        return "\n".join(lines)
 
     def _value_iteration(self, model: DiseaseModel, actions: List[Action]) -> Dict[str, float]:
         """
@@ -147,9 +219,23 @@ class DecisionEngine:
             row[i] * value_table[s] for i, s in enumerate(modified_model.states)
         )
 
+        risk_score = self._calculate_risk_score(current, modified_model)
+        risk_level = self._risk_level(risk_score)
+        explanation = self._build_explanation(
+        macro_state=macro_state,
+        action=action,
+        modified_model=modified_model,
+        risk_score=risk_score,
+        risk_level=risk_level,
+        )
+    
         return ActionScore(
             action=action,
             immediate_utility=immediate,
             long_term_value=future,
             total_score=immediate + future,
+            risk_score=risk_score,
+            risk_level=risk_level,
+            explanation=explanation,
         )
+    
