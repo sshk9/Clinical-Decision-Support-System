@@ -1,6 +1,6 @@
 import sqlite3
-from typing import List, Tuple
 import numpy as np
+from typing import List, Tuple, Dict
 
 from ..domain.disease_model import DiseaseModel
 from ..domain.action import Action
@@ -467,6 +467,56 @@ def get_actions_for_patient(patient_id: str) -> List[Tuple]:
         """, (disease_id, current_state_id))
 
         return cursor.fetchall()
+    
+def get_action_utility_comparison(disease_id: int) -> List[Tuple]:
+    """
+    Returns (action_name, avg_benefit, avg_risk, avg_cost) for all actions
+    of a given disease, averaged across all states.
+    """
+    with get_connection() as conn:
+        cursor = conn.execute("""
+            SELECT
+                a.action_name,
+                AVG(au.expected_benefit) as avg_benefit,
+                AVG(au.complication_risk) as avg_risk,
+                AVG(au.side_effect_cost) as avg_cost
+            FROM action a
+            JOIN action_utility au ON a.id = au.action_id
+            WHERE a.disease_id = ?
+            GROUP BY a.id, a.action_name
+            ORDER BY avg_benefit - avg_risk - avg_cost DESC
+        """, (disease_id,))
+        return cursor.fetchall()
+
+
+def get_state_distribution() -> List[Dict]:
+    """
+    Returns patient counts grouped by disease, state, and severity.
+    Used for population health analytics.
+    """
+    with get_connection() as conn:
+        cursor = conn.execute("""
+            SELECT
+                d.name as disease_name,
+                ds.state_name,
+                ds.severity_level,
+                COUNT(ps.patient_id) as patient_count
+            FROM disease d
+            JOIN disease_state ds ON ds.disease_id = d.id
+            LEFT JOIN patient_status ps ON ps.current_state_id = ds.id
+            GROUP BY d.id, ds.id
+            ORDER BY d.name, ds.severity_level
+        """)
+        rows = cursor.fetchall()
+        return [
+            {
+                "disease_name": row[0],
+                "state_name": row[1],
+                "severity_level": row[2],
+                "patient_count": row[3],
+            }
+            for row in rows
+        ]
 
 
 # ---------------------------------------------------------------------------

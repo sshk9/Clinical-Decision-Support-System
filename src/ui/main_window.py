@@ -13,6 +13,7 @@ from ..domain.action import Action
 from ..decision_engine.engine import DecisionEngine, ActionScore
 from ..domain.patient_record import PatientRecord
 from .comparison_widget import ComparisonWidget
+from .trend_widget import TrendWidget
 
 
 # ---------------------------------------------------------------------------
@@ -256,7 +257,6 @@ class PatientView(QWidget):
         self._history_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self._history_table.setSelectionBehavior(QTableWidget.SelectRows)
         self._history_table.setMaximumHeight(150)
-
         self._history_table.setStyleSheet(f"""
             QTableWidget {{
                 background: {CARD_BG};
@@ -266,7 +266,6 @@ class PatientView(QWidget):
                 font-size: 13px;
             }}
         """)
-
         root.addWidget(self._history_table)
 
         # Transition impact panel
@@ -302,10 +301,9 @@ class PatientView(QWidget):
 
         # Ranked actions table
         scores = self._engine.rank_actions(self._patient.macro_state, self._actions)
-        
+
         if scores:
             best = scores[0]
-            print("DEBUG RISK:", best.risk_score, best.risk_level)
             self._risk_label.setText(f"Risk Score: {best.risk_score:.1f} ({best.risk_level})")
             self._risk_bar.setValue(int(best.risk_score))
             self._explanation_box.setText(best.explanation)
@@ -338,7 +336,6 @@ class PatientView(QWidget):
         # History
         history = self._patient.macro_state.history
         self._history_table.setRowCount(len(history))
-
         for i, step in enumerate(history):
             self._history_table.setItem(i, 0, QTableWidgetItem(f"Step {i+1}"))
             self._history_table.setItem(i, 1, QTableWidgetItem(step.state))
@@ -499,7 +496,7 @@ class Sidebar(QWidget):
         layout.addWidget(title)
         layout.addSpacing(16)
 
-        for i, name in enumerate(["Dashboard", "Patients", "Patient Management", "Analytics"]):
+        for i, name in enumerate(["Dashboard", "Patients", "Patient Management", "Analytics", "Trends"]):
             btn = QPushButton(f"  {name}")
             btn.setCheckable(True)
             btn.setFixedHeight(42)
@@ -556,6 +553,8 @@ class MainWindow(QMainWindow):
         0 — Dashboard
         1 — Patient view (loaded from patient management)
         2 — Patient Management
+        3 — Analytics (patient comparison)
+        4 — Trends (population health)
     """
 
     def __init__(self) -> None:
@@ -585,12 +584,14 @@ class MainWindow(QMainWindow):
         self._management_view = PatientManagementView()
         self._management_view.patient_selected.connect(self._on_patient_selected)
         self._comparison_view = ComparisonWidget()
+        self._trend_view = TrendWidget()
 
-        self._stack.addWidget(self._dashboard_view)     # index 0
-        self._stack.addWidget(self._patient_view)       # index 1
-        self._stack.addWidget(self._management_view)    # index 2
-        self._stack.addWidget(self._comparison_view)    # index 3
-        root.addWidget(self._stack) 
+        self._stack.addWidget(self._dashboard_view)   # index 0
+        self._stack.addWidget(self._patient_view)     # index 1
+        self._stack.addWidget(self._management_view)  # index 2
+        self._stack.addWidget(self._comparison_view)  # index 3
+        self._stack.addWidget(self._trend_view)       # index 4
+        root.addWidget(self._stack)
 
     def _on_nav_changed(self, idx: int) -> None:
         self._stack.setCurrentIndex(idx)
