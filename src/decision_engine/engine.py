@@ -1,6 +1,6 @@
 from __future__ import annotations
-from dataclasses import dataclass
-from typing import List, Dict
+from dataclasses import dataclass, field
+from typing import List, Dict, Tuple
 from ..domain.disease_model import DiseaseModel
 from ..domain.macro_state import MacroState
 from ..domain.action import Action
@@ -15,8 +15,12 @@ class ActionScore:
     immediate_utility: r(P, s, α) — short-term benefit of this action.
     long_term_value:   γ * Σ_s' P_α(s'|s) * V(P_α, s') — expected future value.
     total_score:       immediate_utility + long_term_value — used for ranking.
+    risk_score:        expected severity score (0-100) for the next state.
+    risk_level:        categorical risk level (Low/Medium/High).
+    explanation:       human-readable clinical rationale.
+    future_outcomes:   list of (next_state, probability, state_value) for trace panel.
+    gamma:             discount factor used in calculation.
     """
-
     action: Action
     immediate_utility: float
     long_term_value: float
@@ -24,6 +28,8 @@ class ActionScore:
     risk_score: float
     risk_level: str
     explanation: str
+    future_outcomes: List[Tuple[str, float, float]] = field(default_factory=list)
+    gamma: float = 0.9
 
 
 class DecisionEngine:
@@ -67,8 +73,6 @@ class DecisionEngine:
         scores = [self._score_action(macro_state, action, actions) for action in actions]
         return sorted(scores, key=lambda s: s.total_score, reverse=True)
 
-
-
     # Private methods
 
     def _immediate_utility(self, macro_state: MacroState, action: Action) -> float:
@@ -78,8 +82,8 @@ class DecisionEngine:
         This method is the single place to extend reward computation later.
         """
         return action.immediate_utility
-    
-    def _severity_weights(self, states: list[str]) -> dict[str, float]:
+
+    def _severity_weights(self, states: List[str]) -> Dict[str, float]:
         """
         Assign increasing severity weights to states based on their order.
         First state = least severe, last state = most severe.
@@ -107,6 +111,7 @@ class DecisionEngine:
         return round(score, 1)
 
     def _risk_level(self, risk_score: float) -> str:
+        """Convert numeric risk score to categorical level."""
         if risk_score < 33:
             return "Low"
         elif risk_score < 66:
@@ -161,7 +166,7 @@ class DecisionEngine:
         V: Dict[str, float] = {s: 0.0 for s in states}
 
         for _ in range(self.max_iterations):
-            delta = 0.0 # Reset delta to track change in each iteration
+            delta = 0.0
 
             for state in states:
                 # Find the best action value for this state (max_α)
@@ -207,35 +212,47 @@ class DecisionEngine:
         2. Run value iteration under P_α with all actions to get V(P_α, s).
         3. Compute the full score from the current state s:
                score = r(P, s, α) + γ * Σ_s' P_α(s'|s) * V(P_α, s')
+        4. Build future outcomes list for decision trace.
         """
         modified_model = action.apply(macro_state.model)
         value_table = self._value_iteration(modified_model, actions)
 
         current = macro_state.current_state
         row = modified_model.row(current)
+        states = modified_model.states
 
         immediate = self._immediate_utility(macro_state, action)
-        future = self.gamma * sum(
-            row[i] * value_table[s] for i, s in enumerate(modified_model.states)
-        )
+
+        # Build future outcomes list for trace panel
+        future_outcomes = []
+        future_sum = 0.0
+        for i, state in enumerate(states):
+            prob = row[i]
+            state_value = value_table[state]
+            future_outcomes.append((state, prob, state_value))
+            future_sum += prob * state_value
+
+        future = self.gamma * future_sum
+        total_score = immediate + future
 
         risk_score = self._calculate_risk_score(current, modified_model)
         risk_level = self._risk_level(risk_score)
         explanation = self._build_explanation(
-        macro_state=macro_state,
-        action=action,
-        modified_model=modified_model,
-        risk_score=risk_score,
-        risk_level=risk_level,
+            macro_state=macro_state,
+            action=action,
+            modified_model=modified_model,
+            risk_score=risk_score,
+            risk_level=risk_level,
         )
-    
+
         return ActionScore(
             action=action,
             immediate_utility=immediate,
             long_term_value=future,
-            total_score=immediate + future,
+            total_score=total_score,
             risk_score=risk_score,
             risk_level=risk_level,
             explanation=explanation,
+            future_outcomes=future_outcomes,
+            gamma=self.gamma,
         )
-    
