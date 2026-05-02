@@ -5,6 +5,8 @@
 The Clinical Decision Support System (CDSS) follows a **clean layered architecture** (also known as Hexagonal or Onion architecture). This design enforces **Separation of Concerns**, **High Cohesion**, and **Low Coupling** – ensuring that no UI code exists inside the decision engine, and no database logic lives inside domain objects.
 
 ## High-Level Architecture Diagram
+
+```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                           PRESENTATION LAYER                                │
 │  ┌──────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────┐ ┌───────────┐ │
@@ -12,22 +14,22 @@ The Clinical Decision Support System (CDSS) follows a **clean layered architectu
 │  │Sidebar   │ │LoginView     │ │RiskBenefitPlot│ │Dashboard│ │Sensitivity│ │
 │  └──────────┘ └──────────────┘ └──────────────┘ └──────────┘ └───────────┘ │
 └─────────────────────────────────────────────────────────────────────────────┘
-│
-│ Signals / Slots / Method calls
-▼
+                                      │
+                                      │ Signals / Slots / Method calls
+                                      ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                         APPLICATION / ORCHESTRATION                         │
 │                            patient_service.py                               │
 └─────────────────────────────────────────────────────────────────────────────┘
-│
-▼
+                                      │
+                                      ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                           DECISION ENGINE LAYER                             │
 │                              engine.py                                      │
 │                         (Markov Decision Process)                           │
 └─────────────────────────────────────────────────────────────────────────────┘
-│
-▼
+                                      │
+                                      ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                             DOMAIN MODEL LAYER                              │
 │  ┌────────────┐ ┌────────────┐ ┌──────────────┐ ┌────────────┐ ┌─────────┐ │
@@ -36,16 +38,17 @@ The Clinical Decision Support System (CDSS) follows a **clean layered architectu
 │  │ Chain)     │ │            │ │              │ │            │ │         │ │
 │  └────────────┘ └────────────┘ └──────────────┘ └────────────┘ └─────────┘ │
 └─────────────────────────────────────────────────────────────────────────────┘
-│
-│ Queries / Updates
-▼
+                                      │
+                                      │ Queries / Updates
+                                      ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                          INFRASTRUCTURE LAYER                               │
 │  ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌───────────┐ │
 │  │ database.py│ │auth_service│ │patient_    │ │ SQLite     │ │   CSV     │ │
-│  │(queries)   │ │ (login)    │ │ service.py │ │ cdss.db    │ │ exports   │ │
+│  │(queries)   │ │ (login)    │ │service.py  │ │ cdss.db    │ │ exports   │ │
 │  └────────────┘ └────────────┘ └────────────┘ └────────────┘ └───────────┘ │
 └─────────────────────────────────────────────────────────────────────────────┘
+```
 
 **Note on `analytics.py`:** Analytics functions (`compare_actions`, `state_success_rate`) are located in `src/analytics/analytics.py` – a separate module for pure computation. There is no duplicate `analytics.py` in `src/infrastructure/`.
 
