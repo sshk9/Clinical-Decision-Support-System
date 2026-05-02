@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Clinical Decision Support System (CDSS) follows a clean layered architecture (also known as Hexagonal or Onion architecture). This design enforces Separation of Concerns, High Cohesion, and **Low Coupling – ensuring that no UI code exists inside the decision engine, and no database logic lives inside domain objects.
+The Clinical Decision Support System (CDSS) follows a clean layered architecture (also known as Hexagonal or Onion architecture). This design enforces Separation of Concerns, High Cohesion, and Low Coupling – ensuring that no UI code exists inside the decision engine, and no database logic lives inside domain objects.
 
 ## High-Level Architecture Diagram
 
