@@ -2,17 +2,17 @@
 
 ## Overview
 
-The Clinical Decision Support System (CDSS) follows a **clean layered architecture** (also known as Hexagonal or Onion architecture). This design enforces **Separation of Concerns**, **High Cohesion**, and **Low Coupling** – ensuring that no UI code exists inside the decision engine, and no database logic lives inside domain objects.
+The Clinical Decision Support System (CDSS) follows a clean layered architecture (also known as Hexagonal or Onion architecture). This design enforces Separation of Concerns, High Cohesion, and **Low Coupling – ensuring that no UI code exists inside the decision engine, and no database logic lives inside domain objects.
 
 ## High-Level Architecture Diagram
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                           PRESENTATION LAYER                                │
-│  ┌──────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────┐ ┌───────────┐ │
-│  │MainWindow│ │ PatientView  │ │ComparisonWid.│ │TrendWid. │ │AuditWid.  │ │
-│  │Sidebar   │ │LoginView     │ │RiskBenefitPlot│ │Dashboard│ │Sensitivity│ │
-│  └──────────┘ └──────────────┘ └──────────────┘ └──────────┘ └───────────┘ │
+│  ┌──────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────┐ ┌───────────┐  │
+│  │MainWindow│ │ PatientView  │ │ComparisonWid.│ │TrendWid. │ │AuditWid.  │  │
+│  │Sidebar   │ │LoginView     │ │RiskBenefitPlot│ │Dashboard│ │Sensitivity│  │
+│  └──────────┘ └──────────────┘ └──────────────┘ └──────────┘ └───────────┘  │
 └─────────────────────────────────────────────────────────────────────────────┘
                                       │
                                       │ Signals / Slots / Method calls
@@ -32,21 +32,21 @@ The Clinical Decision Support System (CDSS) follows a **clean layered architectu
                                       ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                             DOMAIN MODEL LAYER                              │
-│  ┌────────────┐ ┌────────────┐ ┌──────────────┐ ┌────────────┐ ┌─────────┐ │
-│  │DiseaseModel│ │   Action   │ │ MacroState   │ │  Patient   │ │History  │ │
-│  │(Markov     │ │            │ │ (P, s)       │ │            │ │Step     │ │
-│  │ Chain)     │ │            │ │              │ │            │ │         │ │
-│  └────────────┘ └────────────┘ └──────────────┘ └────────────┘ └─────────┘ │
+│  ┌────────────┐ ┌────────────┐ ┌──────────────┐ ┌────────────┐ ┌─────────┐  │
+│  │DiseaseModel│ │   Action   │ │ MacroState   │ │  Patient   │ │History  │  │
+│  │(Markov     │ │            │ │ (P, s)       │ │            │ │Step     │  │
+│  │ Chain)     │ │            │ │              │ │            │ │         │  │
+│  └────────────┘ └────────────┘ └──────────────┘ └────────────┘ └─────────┘  │
 └─────────────────────────────────────────────────────────────────────────────┘
                                       │
                                       │ Queries / Updates
                                       ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                          INFRASTRUCTURE LAYER                               │
-│  ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌───────────┐ │
-│  │ database.py│ │auth_service│ │patient_    │ │ SQLite     │ │   CSV     │ │
-│  │(queries)   │ │ (login)    │ │service.py  │ │ cdss.db    │ │ exports   │ │
-│  └────────────┘ └────────────┘ └────────────┘ └────────────┘ └───────────┘ │
+│  ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌───────────┐  │
+│  │ database.py│ │auth_service│ │patient_    │ │ SQLite     │ │   CSV     │  │
+│  │(queries)   │ │ (login)    │ │service.py  │ │ cdss.db    │ │ exports   │  │
+│  └────────────┘ └────────────┘ └────────────┘ └────────────┘ └───────────┘  │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -163,6 +163,7 @@ V(P, s) = max_α [ r(P, s, α) + γ * Σ_s' P_α(s'|s) * V(P_α, s') ]
 | **Transparency** | The decision trace tree shows clinicians exactly how the engine arrived at a recommendation |
 
 ## Folder Structure
+```
 Clinical-Decision-Support-System/
 ├── main.py                          # Application entry point
 ├── requirements.txt                 # Python dependencies
@@ -200,3 +201,4 @@ Clinical-Decision-Support-System/
 │       └── analytics.py
 └── tests/                           # Unit tests
 └── test_basic.py
+```
