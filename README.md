@@ -161,6 +161,7 @@ These limitations are acknowledged as scope for future work.
 ## Academic Integrity Statement
 
 This project was developed as a student project. All code is original unless otherwise noted. Transition probabilities for Type 2 Diabetes are adapted from Varshney et al. (2020) as cited in the source code comments.
+
 **Members**
 - Eva
 - Sara
