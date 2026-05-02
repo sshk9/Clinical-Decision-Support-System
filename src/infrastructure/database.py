@@ -1,6 +1,5 @@
 import sqlite3
 from typing import List, Tuple, Dict, Any, Optional
-from datetime import datetime
 import numpy as np
 
 from ..domain.disease_model import DiseaseModel
@@ -123,7 +122,7 @@ def init_db():
             )
         """)
 
-        # New table for tracking clinician decisions and recommendations
+        # Table for tracking clinician decisions
         conn.execute("""
             CREATE TABLE IF NOT EXISTS recommendation_run (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -353,7 +352,7 @@ def seed_data():
                       u["benefit"], u["risk"], u["cost"]))
 
         # ---------------------------------------------------------------
-        # Patients — 3 diabetes, 3 CKD
+        # Patients — 3 diabetes, 3 CKD (NO DEMO USER)
         # ---------------------------------------------------------------
         diabetes_patients = [
             ("P001", "John",  "Smith",    "Normal"),
@@ -389,10 +388,13 @@ def seed_data():
             """, (patient_id, ckd_id,
                   ckd_state_ids[state], ckd_model_id))
 
+        # NO DEMO USER CREATED HERE — users must register via login screen
+
         conn.commit()
         print("Database seeded: 2 diseases, 6 patients")
         print("  - Type 2 Diabetes: 3 patients (P001-P003)")
         print("  - Chronic Kidney Disease: 3 patients (P004-P006)")
+        print("  - No demo user created. Register via login screen.")
 
 
 # ---------------------------------------------------------------------------
@@ -452,110 +454,6 @@ def get_all_patients_detailed() -> List[Dict[str, Any]]:
                 "severity_level": row[5],
                 "model_version": row[6],
                 "active_model_id": row[7]
-            })
-        return results
-
-
-def get_diseases_with_states() -> List[Dict[str, Any]]:
-    """
-    Returns all diseases with their states and active model IDs.
-    Used for populating the add patient form.
-    """
-    with get_connection() as conn:
-        cursor = conn.execute("""
-            SELECT 
-                d.id as disease_id,
-                d.name as disease_name,
-                ds.id as state_id,
-                ds.state_name,
-                ds.severity_level,
-                mm.id as model_id,
-                mm.version as model_version
-            FROM disease d
-            JOIN disease_state ds ON d.id = ds.disease_id
-            JOIN markov_model mm ON d.id = mm.disease_id
-            WHERE mm.is_active = 1
-            ORDER BY d.name, ds.severity_level
-        """)
-        
-        results = []
-        for row in cursor.fetchall():
-            results.append({
-                "disease_id": row[0],
-                "disease_name": row[1],
-                "state_id": row[2],
-                "state_name": row[3],
-                "severity_level": row[4],
-                "model_id": row[5],
-                "model_version": row[6]
-            })
-        return results
-
-
-def add_patient(patient_id: str, first_name: str, last_name: str, 
-                disease_id: int, state_id: int, model_id: int) -> bool:
-    """
-    Add a new patient to the database.
-    Returns True if successful, False if patient ID already exists.
-    """
-    with get_connection() as conn:
-        try:
-            # Check if patient already exists
-            cursor = conn.execute("SELECT 1 FROM patient WHERE id = ?", (patient_id,))
-            if cursor.fetchone():
-                return False
-            
-            # Insert into patient table
-            conn.execute("""
-                INSERT INTO patient (id, first_name, last_name)
-                VALUES (?, ?, ?)
-            """, (patient_id, first_name, last_name))
-            
-            # Insert into patient_status table
-            conn.execute("""
-                INSERT INTO patient_status (patient_id, disease_id, current_state_id, active_model_id)
-                VALUES (?, ?, ?, ?)
-            """, (patient_id, disease_id, state_id, model_id))
-            
-            conn.commit()
-            return True
-        except Exception as e:
-            print(f"Error adding patient: {e}")
-            return False
-
-
-def get_patient_summary_export() -> List[Dict[str, Any]]:
-    """
-    Returns all patients with full details for CSV export.
-    """
-    with get_connection() as conn:
-        cursor = conn.execute("""
-            SELECT 
-                p.id as patient_id,
-                p.first_name,
-                p.last_name,
-                d.name as disease_name,
-                ds.state_name as current_state,
-                ds.severity_level,
-                mm.version as model_version
-            FROM patient p
-            JOIN patient_status ps ON p.id = ps.patient_id
-            JOIN disease d ON ps.disease_id = d.id
-            JOIN disease_state ds ON ps.current_state_id = ds.id
-            JOIN markov_model mm ON ps.active_model_id = mm.id
-            ORDER BY p.id
-        """)
-        
-        results = []
-        for row in cursor.fetchall():
-            results.append({
-                "patient_id": row[0],
-                "first_name": row[1],
-                "last_name": row[2],
-                "disease_name": row[3],
-                "current_state": row[4],
-                "severity_level": row[5],
-                "model_version": row[6]
             })
         return results
 
@@ -630,16 +528,13 @@ def get_actions_for_patient(patient_id: str) -> List[Tuple]:
         return cursor.fetchall()
 
 
+# ---------------------------------------------------------------------------
+# NEW: Query functions for analytics and audit
+# ---------------------------------------------------------------------------
+
 def get_action_utility_comparison(disease_id: int) -> List[Dict[str, Any]]:
     """
     Fetches all actions with their avg benefit, risk, cost across all states for a given disease.
-    Powers the "most effective strategies" insight.
-    
-    Args:
-        disease_id: The disease ID to query actions for
-        
-    Returns:
-        List of dicts with keys: action_name, avg_benefit, avg_risk, avg_cost, net_utility
     """
     with get_connection() as conn:
         cursor = conn.execute("""
@@ -669,13 +564,7 @@ def get_action_utility_comparison(disease_id: int) -> List[Dict[str, Any]]:
 
 
 def get_state_distribution() -> List[Dict[str, Any]]:
-    """
-    Counts how many patients are in each state per disease.
-    Powers the "success rate of states" insight.
-    
-    Returns:
-        List of dicts with keys: disease_name, state_name, severity_level, patient_count
-    """
+    """Counts how many patients are in each state per disease."""
     with get_connection() as conn:
         cursor = conn.execute("""
             SELECT 
@@ -704,7 +593,7 @@ def get_state_distribution() -> List[Dict[str, Any]]:
 
 def get_benefit_risk_for_patient(patient_id: str) -> List[Tuple]:
     """
-    Returns a list of (action_name, expected_benefit, complication_risk, side_effect_cost)
+    Returns (action_name, expected_benefit, complication_risk, side_effect_cost)
     for the patient's current disease and state.
     """
     with get_connection() as conn:
@@ -723,207 +612,6 @@ def get_benefit_risk_for_patient(patient_id: str) -> List[Tuple]:
         return cursor.fetchall()
 
 
-# ---------------------------------------------------------------------------
-# Recommendation tracking functions
-# ---------------------------------------------------------------------------
-
-def log_recommendation(
-    patient_id: str,
-    recommended_action: str,
-    recommended_score: float,
-    clinician_decision: str,
-    override_action: Optional[str] = None
-) -> None:
-    """
-    Log a clinical recommendation and the clinician's decision.
-    
-    Args:
-        patient_id: The patient ID
-        recommended_action: Name of the action recommended by the CDSS
-        recommended_score: The total score of the recommended action
-        clinician_decision: One of 'accept', 'reject', 'override'
-        override_action: If decision is 'override', the action the clinician chose instead
-    """
-    with get_connection() as conn:
-        conn.execute("""
-            INSERT INTO recommendation_run 
-            (patient_id, recommended_action, recommended_score, clinician_decision, override_action)
-            VALUES (?, ?, ?, ?, ?)
-        """, (patient_id, recommended_action, recommended_score, clinician_decision, override_action))
-        conn.commit()
-
-
-def get_recommendation_history(patient_id: str, limit: int = 50) -> List[Dict[str, Any]]:
-    """
-    Get recommendation history for a specific patient.
-    
-    Args:
-        patient_id: The patient ID
-        limit: Maximum number of records to return
-        
-    Returns:
-        List of dicts with recommendation data
-    """
-    with get_connection() as conn:
-        cursor = conn.execute("""
-            SELECT 
-                id,
-                recommended_action,
-                recommended_score,
-                clinician_decision,
-                override_action,
-                timestamp
-            FROM recommendation_run
-            WHERE patient_id = ?
-            ORDER BY timestamp DESC
-            LIMIT ?
-        """, (patient_id, limit))
-        
-        results = []
-        for row in cursor.fetchall():
-            results.append({
-                "id": row[0],
-                "recommended_action": row[1],
-                "recommended_score": row[2],
-                "clinician_decision": row[3],
-                "override_action": row[4],
-                "timestamp": row[5]
-            })
-        return results
-
-
-def get_decision_analytics() -> Dict[str, Any]:
-    """
-    Get analytics on clinician decisions across all patients.
-    
-    Returns:
-        Dict with acceptance rate, most common overrides, etc.
-    """
-    with get_connection() as conn:
-        # Total recommendations
-        cursor = conn.execute("SELECT COUNT(*) FROM recommendation_run")
-        total = cursor.fetchone()[0]
-        
-        if total == 0:
-            return {
-                "total_recommendations": 0,
-                "acceptance_rate": 0.0,
-                "rejection_rate": 0.0,
-                "override_rate": 0.0,
-                "most_overridden_action": None,
-                "top_overrides": []
-            }
-        
-        # Decision counts
-        cursor = conn.execute("""
-            SELECT 
-                clinician_decision,
-                COUNT(*) as count
-            FROM recommendation_run
-            GROUP BY clinician_decision
-        """)
-        
-        decision_counts = {row[0]: row[1] for row in cursor.fetchall()}
-        
-        accept_count = decision_counts.get('accept', 0)
-        reject_count = decision_counts.get('reject', 0)
-        override_count = decision_counts.get('override', 0)
-        
-        # Most overridden actions
-        cursor = conn.execute("""
-            SELECT 
-                recommended_action,
-                COUNT(*) as count
-            FROM recommendation_run
-            WHERE clinician_decision = 'override'
-            GROUP BY recommended_action
-            ORDER BY count DESC
-            LIMIT 5
-        """)
-        
-        top_overrides = [{"action": row[0], "count": row[1]} for row in cursor.fetchall()]
-        
-        # Most common override actions chosen
-        cursor = conn.execute("""
-            SELECT 
-                override_action,
-                COUNT(*) as count
-            FROM recommendation_run
-            WHERE clinician_decision = 'override' AND override_action IS NOT NULL
-            GROUP BY override_action
-            ORDER BY count DESC
-            LIMIT 5
-        """)
-        
-        most_overridden = cursor.fetchone()
-        
-        return {
-            "total_recommendations": total,
-            "acceptance_rate": round(accept_count / total * 100, 1) if total > 0 else 0,
-            "rejection_rate": round(reject_count / total * 100, 1) if total > 0 else 0,
-            "override_rate": round(override_count / total * 100, 1) if total > 0 else 0,
-            "most_overridden_action": most_overridden[0] if most_overridden else None,
-            "top_overrides": top_overrides
-        }
-
-
-def get_clinician_feedback_summary(patient_id: str) -> Dict[str, Any]:
-    """
-    Get summary of clinician feedback for a specific patient.
-    
-    Args:
-        patient_id: The patient ID
-        
-    Returns:
-        Dict with feedback summary
-    """
-    with get_connection() as conn:
-        cursor = conn.execute("""
-            SELECT 
-                COUNT(*) as total,
-                SUM(CASE WHEN clinician_decision = 'accept' THEN 1 ELSE 0 END) as accepted,
-                SUM(CASE WHEN clinician_decision = 'reject' THEN 1 ELSE 0 END) as rejected,
-                SUM(CASE WHEN clinician_decision = 'override' THEN 1 ELSE 0 END) as overridden
-            FROM recommendation_run
-            WHERE patient_id = ?
-        """, (patient_id,))
-        
-        row = cursor.fetchone()
-        total, accepted, rejected, overridden = row
-        
-        return {
-            "total_recommendations": total or 0,
-            "accepted": accepted or 0,
-            "rejected": rejected or 0,
-            "overridden": overridden or 0,
-            "acceptance_rate": round((accepted or 0) / (total or 1) * 100, 1)
-        }
-
-
-def log_clinician_decision(patient_id: str, recommended_action: str, recommended_score: float,
-                           decision: str, override_action: str = None) -> None:
-    """
-    Log a clinician's decision regarding a recommendation.
-    
-    Args:
-        patient_id: The patient's ID
-        recommended_action: Name of the recommended action (top-ranked)
-        recommended_score: Score of the recommended action
-        decision: 'accept', 'reject', or 'override'
-        override_action: If decision is 'override', the name of the action chosen instead
-    """
-    with get_connection() as conn:
-        conn.execute("""
-            INSERT INTO recommendation_run 
-            (patient_id, recommended_action, recommended_score, clinician_decision, override_action)
-            VALUES (?, ?, ?, ?, ?)
-        """, (patient_id, recommended_action, recommended_score, decision, override_action))
-        conn.commit()
-
-
-# ---------------------------------------------------------------------------
-# Audit log retrieval function
-# ---------------------------------------------------------------------------
 def get_audit_log(patient_id: str = None):
     """
     Fetch audit log entries from recommendation_run.
@@ -969,6 +657,28 @@ def get_audit_log(patient_id: str = None):
         return cursor.fetchall()
 
 
+def log_clinician_decision(patient_id: str, recommended_action: str, recommended_score: float,
+                           decision: str, override_action: str = None) -> None:
+    """
+    Log a clinician's decision regarding a recommendation.
+    """
+    with get_connection() as conn:
+        conn.execute("""
+            INSERT INTO recommendation_run 
+            (patient_id, recommended_action, recommended_score, clinician_decision, override_action)
+            VALUES (?, ?, ?, ?, ?)
+        """, (patient_id, recommended_action, recommended_score, decision, override_action))
+        conn.commit()
+
+
+def log_recommendation(patient_id: str, recommended_action: str, recommended_score: float,
+                       clinician_decision: str, override_action: str = None) -> None:
+    """
+    Alias for log_clinician_decision for backward compatibility.
+    """
+    log_clinician_decision(patient_id, recommended_action, recommended_score, clinician_decision, override_action)
+
+
 # ---------------------------------------------------------------------------
 # Domain object conversion functions
 # ---------------------------------------------------------------------------
@@ -1003,10 +713,10 @@ def load_actions(patient_id: str) -> List[Action]:
 
 
 # ---------------------------------------------------------------------------
-# User authentication functions
+# User authentication functions (original, no seeded user)
 # ---------------------------------------------------------------------------
 
-def get_user_by_username(username: str) -> Optional[Tuple[str, str]]:
+def get_user_by_username(username: str):
     """Returns (hashed_password, salt) or None if user not found."""
     with get_connection() as conn:
         cursor = conn.execute(
@@ -1026,52 +736,6 @@ def create_user(username: str, hashed_password: str, salt: str) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Patient service function
-# ---------------------------------------------------------------------------
-
-def load_patients_with_actions() -> List:
-    """
-    Load all patients with their actions for UI display.
-    Returns a list of PatientRecord objects.
-    """
-    from ..domain.patient_record import PatientRecord
-    from ..domain.patient import Patient
-    from ..domain.macro_state import MacroState
-    from ..domain.disease_model import DiseaseModel
-    
-    records = []
-    for patient_id, full_name, current_state, disease_name in get_all_patients():
-        # Load disease model and actions
-        try:
-            disease_model = load_disease_model(patient_id)
-            actions = load_actions(patient_id)
-            
-            # Create MacroState with appropriate state index
-            state_index = disease_model.states.index(current_state) if current_state in disease_model.states else 0
-            
-            macro_state = MacroState(
-                state_index=state_index,
-                model=disease_model,
-                history=[],
-                action_utility_history=[]
-            )
-            
-            patient = Patient(
-                patient_id=patient_id,
-                name=full_name,
-                disease_name=disease_name,
-                macro_state=macro_state
-            )
-            
-            records.append(PatientRecord(patient=patient, actions=actions))
-        except Exception as e:
-            print(f"Error loading patient {patient_id}: {e}")
-            continue
-    
-    return records
-
-
-# ---------------------------------------------------------------------------
 # Direct execution — initialize and verify
 # ---------------------------------------------------------------------------
 
@@ -1085,36 +749,15 @@ if __name__ == "__main__":
     patients = get_all_patients()
     print(f"Found {len(patients)} patients:")
     for patient_id, full_name, state, disease_name in patients:
-        print(f"  - {patient_id}: {full_name} - {state} ({disease_name})")
+        print(f"  - {patient_id}: {full_name} - {state}")
 
-    # Test action utility comparison
-    print("\nAction Utility Comparison (Diabetes):")
-    diabetes_comparison = get_action_utility_comparison(1)  # Diabetes ID = 1
-    for item in diabetes_comparison:
-        print(f"  - {item['action_name']}: Net Utility = {item['net_utility']:.3f}")
+        if patient_id == "P001":
+            model = load_disease_model(patient_id)
+            print(f"\n  DiseaseModel for {full_name}: {model.states}")
 
-    # Test state distribution
-    print("\nState Distribution:")
-    state_dist = get_state_distribution()
-    for item in state_dist:
-        print(f"  - {item['disease_name']} - {item['state_name']}: {item['patient_count']} patients")
-
-    # Test loading a specific patient
-    test_patient = "P001"
-    print(f"\nLoading patient {test_patient}:")
-    disease_model = load_disease_model(test_patient)
-    print(f"  Disease Model: {disease_model.states}")
-    
-    actions = load_actions(test_patient)
-    print(f"  Actions ({len(actions)}):")
-    for action in actions:
-        print(f"    - {action.name}: utility={action.immediate_utility:.3f}")
-
-    # Test new detailed patient query
-    print("\nDetailed Patient Data:")
-    detailed = get_all_patients_detailed()
-    for patient in detailed:
-        print(f"  - {patient['patient_id']}: {patient['first_name']} {patient['last_name']} - "
-              f"Severity: {patient['severity_level']}, Model: {patient['model_version']}")
+            actions = load_actions(patient_id)
+            print(f"  Actions for {full_name}:")
+            for action in actions:
+                print(f"    - {action.name}: immediate_utility={action.immediate_utility}")
 
     print("\nDatabase ready!")
