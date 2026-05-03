@@ -40,8 +40,14 @@ venv\Scripts\activate
 ```bash
 pip install -r requirements.txt
 ```
-
-**Note:** `matplotlib` requires `PyQt5` to be installed first for the Qt5Agg backend. The `requirements.txt` orders dependencies correctly.
+3. **Create the Database**
+```bash
+python -m src.infrastructure.database
+```
+4. **Run the Application**
+```
+python main.py
+```
 
 ### Dependencies
 
@@ -51,13 +57,6 @@ pip install -r requirements.txt
 | numpy | ≥ 1.24 | Numerical computing (transition matrices) |
 | matplotlib | ≥ 3.7 | Charts (risk‑benefit plot, trends) |
 | pytest | ≥ 7.0 | Unit testing |
-
-
-## Running the Application
-
-```bash
-python main.py
-```
 
 ### Default Login Credentials
 
@@ -86,6 +85,7 @@ Clinical-Decision-Support-System/
 │   │   ├── login_view.py
 │   │   ├── comparison_widget.py
 │   │   ├── trend_widget.py
+│   │   ├── add_patient_dialog.py
 │   │   ├── audit_widget.py
 │   │   ├── risk_benefit_plot.py
 │   │   ├── add_patient_dialog_.py
