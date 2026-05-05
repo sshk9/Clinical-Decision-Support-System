@@ -1173,7 +1173,7 @@ class Sidebar(QWidget):
         layout.addWidget(title)
         layout.addSpacing(16)
 
-        nav_items = ["Dashboard", "Patients", "Patient Management", "Analytics", "Trends", "Audit Log"]
+        nav_items = ["Dashboard", "Patient Management", "Analytics", "Trends", "Audit Log"]
 
         for i, name in enumerate(nav_items):
             btn = QPushButton(name)
@@ -1234,11 +1234,11 @@ class MainWindow(QMainWindow):
 
     Views:
         0 — Dashboard
-        1 — Patient view (loaded from patient management)
-        2 — Patient Management
-        3 — Analytics / Patient Comparison
-        4 — Population Trends
-        5 — Audit Log
+        1 — Patient Management
+        2 — Analytics / Patient Comparison
+        3 — Population Trends
+        4 — Audit Log
+        5 — Patient view (loaded from Patient Management; not navigable directly)
     """
 
     def __init__(self) -> None:
@@ -1272,11 +1272,11 @@ class MainWindow(QMainWindow):
         self._audit_view = AuditWidget()
 
         self._stack.addWidget(self._dashboard_view)   # index 0
-        self._stack.addWidget(self._patient_view)     # index 1
-        self._stack.addWidget(self._management_view)  # index 2
-        self._stack.addWidget(self._analytics_view)   # index 3
-        self._stack.addWidget(self._trend_view)       # index 4
-        self._stack.addWidget(self._audit_view)       # index 5
+        self._stack.addWidget(self._management_view)  # index 1
+        self._stack.addWidget(self._analytics_view)   # index 2
+        self._stack.addWidget(self._trend_view)       # index 3
+        self._stack.addWidget(self._audit_view)       # index 4
+        self._stack.addWidget(self._patient_view)     # index 5 — only reached via patient selection
         root.addWidget(self._stack)
 
     def _on_nav_changed(self, idx: int) -> None:
@@ -1286,7 +1286,7 @@ class MainWindow(QMainWindow):
         """Load selected patient into patient view and navigate to it."""
         self._patient_view.load_patient(patient, actions)
         self._sidebar.set_active(1)
-        self._stack.setCurrentIndex(1)
+        self._stack.setCurrentIndex(5)
 
     def _load_demo_data(self) -> None:
         """Load patients from the database via the patient service."""
