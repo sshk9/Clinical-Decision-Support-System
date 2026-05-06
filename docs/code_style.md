@@ -4,37 +4,58 @@
 
 This document defines the coding conventions and standards used throughout the Clinical Decision Support System (CDSS) project. Following these guidelines ensures consistency, maintainability, and readability across the codebase.
 
+These guidelines describe both the preferred coding style and the current state of the project. Where the current implementation does not fully follow a guideline, the gap is documented as a future refactor rather than hidden.
+
+---
+
 ## Naming Conventions
 
 | Element | Style | Example |
 |---------|-------|---------|
 | Classes | PascalCase | `PatientView`, `DecisionEngine`, `ActionScore` |
-| Functions (public) | snake_case | `get_all_patients()`, `rank_actions()` |
+| Functions | snake_case | `get_all_patients()`, `rank_actions()` |
 | Variables | snake_case | `patient_id`, `transition_matrix` |
 | Constants | UPPER_SNAKE_CASE | `SIDEBAR_BG`, `ACCENT`, `THRESHOLD_SAFE` |
-| Private methods/functions | _ prefix + snake_case | `_update_trace()`, `_value_iteration()` |
-| Protected attributes | _ prefix + snake_case | `_patient`, `_current_scores` |
-| Module-level (internal) | _ prefix + snake_case | `_card()`, `_label()` |
+| Private methods/functions | `_` prefix + snake_case | `_update_trace()`, `_value_iteration()` |
+| Internal attributes | `_` prefix + snake_case | `_patient`, `_current_scores` |
+| Module-level helpers | `_` prefix + snake_case | `_card()`, `_label()` |
+
+---
 
 ## File Organization
 
-### One Class Per File (Single Responsibility)
+### Preferred Rule: One Main Class Per File
 
-Except for small helper classes (like `ActionScore` defined in `engine.py`) and UI helpers (`_card`, `_label` in `main_window.py`).
+The preferred structure is one main class per file, especially for domain, engine, infrastructure, and analytics code.
 
-### Import Order
+Current exception:
+
+- `main_window.py` currently contains multiple UI classes, including `MainWindow`, `PatientView`, `PatientManagementView`, `DashboardView`, and `Sidebar`.
+
+This is acceptable for the current prototype but is a known maintainability issue. A future refactor should split these UI classes into separate files.
+
+Small tightly related helper classes may remain in the same file, for example:
+
+- `ActionScore` in `engine.py`
+- small UI helper functions such as `_card()` and `_label()`
+
+---
+
+## Import Order
+
+Imports should be grouped in this order:
 
 ```python
 # 1. Standard library imports
 from __future__ import annotations
 import csv
 from datetime import datetime
-from typing import List, Dict, Optional
+from typing import Dict, List, Optional
 
 # 2. Third-party imports
-from PyQt5.QtWidgets import QWidget, QVBoxLayout
-from PyQt5.QtCore import Qt
 import numpy as np
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QWidget, QVBoxLayout
 
 # 3. Internal project imports
 from ..domain.patient import Patient
@@ -42,25 +63,50 @@ from ..domain.action import Action
 from ..decision_engine.engine import DecisionEngine
 ```
 
-Blank line between each group. Within each group, imports are alphabetical.
+Rules:
+- Use one blank line between groups
+- Keep imports alphabetised within each group where practical
+- Avoid unused imports
+
+---
 
 ## Function Length
 
-**Rule:** No function longer than 50 lines (excluding docstrings and blank lines).
+Preferred rule:
 
-**Exception:** UI `_build` methods in `src/ui/` may exceed 50 lines because they are **declarative layout code** rather than procedural logic. A 150‑line `_build` that simply stacks widgets is acceptable and more maintainable than splitting it arbitrarily. However, **logic** inside `_build` (e.g., signal connections, non‑layout initialisation) should still be extracted into helper methods.
+- Non-UI functions should generally stay below 50 lines
+- Complex functions should be split into smaller helpers
 
-If a non‑UI function exceeds 50 lines, refactor it into smaller helper functions. For example, `PatientView._refresh()` (which would be ~60 lines) is split into:
-- `_refresh()` – coordinates refresh (10 lines)
-- `_update_ranked_table()` – populates the action table (20 lines)
-- `_update_risk_display()` – updates risk score and progress bar (15 lines)
-- `_update_history_table()` – fills action history (10 lines)
+Exception:
+
+- UI layout/build methods may exceed 50 lines when they are mostly declarative widget construction
+
+Current known issue:
+
+- `PatientView._refresh()` is currently a monolithic method of roughly 70 lines.
+- It is not currently split into `_update_ranked_table()`, `_update_risk_display()`, or `_update_history_table()`.
+- This is acceptable for the current prototype but should be treated as a refactor candidate.
+
+Recommended future refactor:
+
+```python
+def _refresh(self) -> None:
+    self._update_header()
+    self._update_ranked_table()
+    self._update_risk_display()
+    self._update_history_panel()
+    self._update_transition_panel()
+```
+
+The goal is not to split code mechanically, but to separate different UI update responsibilities when doing so improves readability.
+
+---
 
 ## Docstrings
 
-Every public function and class must have a docstring following this format:
+Public classes and public functions should have concise docstrings.
 
-### For a class:
+### Class example
 
 ```python
 class DecisionEngine:
@@ -70,37 +116,35 @@ class DecisionEngine:
     """
 ```
 
-### For a function with parameters and return value:
+### Function example
 
 ```python
-def get_audit_log(patient_id: str = None):
+def get_audit_log(patient_id: str | None = None):
     """
     Fetch audit log entries from recommendation_run.
-    
+
     Args:
-        patient_id: If provided, filter to a specific patient.
-                    If None, return all records.
-    
+        patient_id: Optional patient ID filter.
+
     Returns:
-        List of tuples: (patient_id, patient_name, recommended_action,
-                         recommended_score, clinician_decision,
-                         override_action, timestamp)
-        Ordered by timestamp descending.
+        Audit log rows ordered by timestamp descending.
     """
 ```
 
-### For simple functions without parameters:
+### Simple function example
 
 ```python
 def get_connection():
-    """Get a database connection to cdss.db."""
+    """Return a database connection to cdss.db."""
 ```
+
+---
 
 ## Comments
 
 ### Section Dividers
 
-For long files like `main_window.py`, use decorative dividers to separate logical sections:
+For long files such as `main_window.py`, use section dividers to separate logical areas:
 
 ```python
 # ---------------------------------------------------------------------------
@@ -110,19 +154,21 @@ For long files like `main_window.py`, use decorative dividers to separate logica
 
 ### Inline Comments
 
-Write `why`, not `what`. The code itself tells what it does:
+Comments should explain why something is done, not simply repeat what the code does.
 
 ```python
 # Good — explains why
-risk_factor = 1.0 + (self.risk_spin.value() * 0.1)  # Each step = ±10% on immediate benefit
+move = min(delta, P[i, worsen_idx])  # Prevent negative probabilities
 
 # Bad — repeats the code
-risk_factor = 1.0 + (self.risk_spin.value() * 0.1)  # Multiply risk spin value by 0.1 and add 1
+move = min(delta, P[i, worsen_idx])  # Take the minimum of delta and matrix value
 ```
+
+---
 
 ## Error Handling
 
-All database operations and file I/O must be wrapped in try/except blocks:
+Database operations and file I/O should handle exceptions explicitly.
 
 ```python
 try:
@@ -131,73 +177,108 @@ try:
         return cursor.fetchall()
 except sqlite3.OperationalError as e:
     print(f"Database error: {e}")
-    return []  # or re-raise, or handle appropriately
+    return []
 ```
 
-**Never silently swallow exceptions.** At minimum, print the error or log it.
+Rules:
+- Do not silently swallow exceptions
+- At minimum, print or log the error
+- Return a safe fallback only when appropriate
+
+---
 
 ## Type Hints
 
-All function signatures must include type hints:
+Function signatures should include type hints where practical.
 
 ```python
-def get_actions_for_patient(patient_id: str) -> List[Tuple]:
 def load_patient(self, patient: Patient, actions: list[Action]) -> None:
+    ...
+
 def _update_trace(self) -> None:
+    ...
 ```
 
-For complex types, import from `typing`:
+For complex types, use standard typing tools when needed:
 
 ```python
-from typing import List, Tuple, Dict, Optional
+from typing import Dict, List, Optional, Tuple
 ```
 
-## Indentation & Spacing
+---
 
-- **Indentation:** 4 spaces (no tabs)
-- **Blank lines:**
-  - Two blank lines between top-level functions and classes
-  - One blank line between methods in a class
-  - One blank line before and after section dividers
-- **Line length:** Maximum 120 characters
+## Indentation and Spacing
 
-## Example – A Well-Formatted Function
+- Indentation: 4 spaces
+- No tabs
+- Two blank lines between top-level classes/functions
+- One blank line between methods in a class
+- Line length: maximum 120 characters where practical
+
+---
+
+## Example – Well-Formatted Database Function
 
 ```python
-def get_benefit_risk_for_patient(patient_id: str) -> List[Tuple]:
+def get_benefit_risk_for_patient(patient_id: str) -> list[tuple]:
     """
-    Returns (action_name, expected_benefit, complication_risk, side_effect_cost)
+    Return benefit, risk, and cost values for available actions
     for the patient's current disease and state.
     """
-    with get_connection() as conn:
-        try:
+    try:
+        with get_connection() as conn:
             cursor = conn.execute("""
-                SELECT 
+                SELECT
                     a.action_name,
                     au.expected_benefit,
                     au.complication_risk,
                     au.side_effect_cost
                 FROM patient_status ps
                 JOIN action a ON a.disease_id = ps.disease_id
-                JOIN action_utility au ON a.id = au.action_id 
+                JOIN action_utility au
+                    ON a.id = au.action_id
                     AND au.state_id = ps.current_state_id
                 WHERE ps.patient_id = ?
                 ORDER BY a.action_name
             """, (patient_id,))
             return cursor.fetchall()
-        except sqlite3.OperationalError as e:
-            print(f"Error fetching benefit/risk for patient {patient_id}: {e}")
-            return []
+    except sqlite3.OperationalError as e:
+        print(f"Error fetching benefit/risk for patient {patient_id}: {e}")
+        return []
 ```
+
+---
 
 ## Exceptions to Rules
 
 | Rule | Exception | Justification |
 |------|-----------|---------------|
-| 50‑line limit | UI `_build` methods | Declarative layout code; splitting would harm readability |
-| One class per file | `ActionScore` in `engine.py` | Tightly coupled to `DecisionEngine`; separate file would add overhead |
-| No `_` prefix for module‑level helpers | `_card`, `_label` in `main_window.py` | Indicates they are internal to the UI module, not part of the public API |
+| One class per file | `main_window.py` currently contains multiple UI classes | Accepted for prototype; should be refactored later |
+| 50-line limit | UI layout/build methods | Declarative UI layout can be clearer when kept together |
+| 50-line limit | `PatientView._refresh()` currently exceeds the guideline | Known refactor candidate |
+| One class per file | `ActionScore` in `engine.py` | Closely tied to `DecisionEngine` |
+| No public access to widget internals | `Sidebar.set_active(idx)` is exposed intentionally | Provides a controlled public interface instead of direct internal access |
+
+---
+
+## Current Refactor TODOs
+
+The following code-style issues are known and should be addressed in future work:
+
+1. Split `main_window.py` into separate UI modules.
+2. Break `PatientView._refresh()` into smaller helper methods.
+3. Remove unused dependencies from `requirements.txt`.
+4. Decide whether `_build_explanation()` should be displayed in the UI or removed.
+5. Keep documentation aligned with actual code structure.
+
+---
 
 ## Enforcement
 
-These guidelines are enforced by code review, not automation. All team members are responsible for following them.
+These guidelines are enforced through review rather than automated tooling.
+
+Future improvements could include:
+- `ruff` for linting
+- `black` for formatting
+- `mypy` for optional type checking
+- `pytest` for regression testing
