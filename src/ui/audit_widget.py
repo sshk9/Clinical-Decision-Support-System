@@ -197,7 +197,7 @@ class AuditWidget(QWidget):
                 ts = ""
 
             self.table.setItem(row, 0, QTableWidgetItem(ts))
-            self.table.setItem(row, 1, QTableWidgetItem(patient_name))
+            self.table.setItem(row, 1, QTableWidgetItem(f"{patient_name} ({pid})"))
             self.table.setItem(row, 2, QTableWidgetItem(recommended_action or ""))
             self.table.setItem(row, 3, QTableWidgetItem(f"{score:.3f}" if score is not None else ""))
 
