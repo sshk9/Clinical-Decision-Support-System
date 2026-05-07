@@ -15,8 +15,6 @@ from ..infrastructure.database import get_state_distribution, get_action_utility
 from ..analytics.analytics import compare_actions
 
 
-SIDEBAR_BG = "#1B2A2F"
-CONTENT_BG = "#F0F7F7"
 ACCENT = "#2ABFBF"
 CARD_BG = "#FFFFFF"
 TEXT_PRIMARY = "#1B2A2F"
@@ -155,8 +153,8 @@ class TrendWidget(QWidget):
             1: SUCCESS,
             2: "#8BC34A",
             3: WARNING,
-            4: DANGER,
-            5: "#7B1FA2"
+            4: "#F28B82",
+            5: DANGER
         }
         
         for severity in [1, 2, 3, 4, 5]:
@@ -198,6 +196,7 @@ class TrendWidget(QWidget):
         container_layout.addWidget(canvas)
         
         return container
+    
 
     def _create_metrics_panel(self, distribution, disease_name):
         """Create a panel with key population health metrics"""
@@ -238,7 +237,7 @@ class TrendWidget(QWidget):
         # Display metrics
         metrics = [
             ("Total Patients", str(total_patients), TEXT_PRIMARY),
-            ("Success Rate", f"{success_rate:.1f}%", SUCCESS if success_rate >= 70 else WARNING),
+            ("Success Rate", f"{success_rate:.1f}%", self._get_success_rate_color(success_rate)),
             ("Critical Cases", f"{critical_count} ({critical_rate:.1f}%)", DANGER if critical_count > 0 else TEXT_MUTED),
             ("Avg Severity", f"{avg_severity:.1f}/5", self._get_severity_color(avg_severity))
         ]
@@ -258,7 +257,7 @@ class TrendWidget(QWidget):
         status_label = QLabel(f"Population Health: {health_status}")
         status_label.setAlignment(Qt.AlignCenter)
         status_label.setStyleSheet(f"""
-            background-color: {self._get_status_color(success_rate)};
+            background-color: {self._get_status_color(success_rate, critical_rate)};
             color: white;
             padding: 8px;
             border-radius: 5px;
@@ -383,12 +382,21 @@ class TrendWidget(QWidget):
         layout.addWidget(table)
         
         return table_widget
+    
+    def _get_success_rate_color(self, success_rate):
+        """Get color for success rate metric"""
+        if success_rate < 50:
+            return DANGER
+        elif success_rate < 70:
+            return WARNING
+        else:
+            return SUCCESS
 
     def _get_severity_color(self, severity):
         """Get color for severity level"""
         if severity <= 2:
             return SUCCESS
-        elif severity == 3:
+        elif severity < 4:
             return WARNING
         else:
             return DANGER
@@ -406,9 +414,11 @@ class TrendWidget(QWidget):
         else:
             return "Excellent - Healthy Population"
 
-    def _get_status_color(self, success_rate):
+    def _get_status_color(self, success_rate, critical_rate):
         """Get color for health status"""
-        if success_rate < 50:
+        if critical_rate > 20:
+            return DANGER
+        elif success_rate < 50:
             return DANGER
         elif success_rate < 70:
             return WARNING
