@@ -1,4 +1,5 @@
 from __future__ import annotations
+import re
 from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QComboBox, QPushButton, QMessageBox, QFormLayout
@@ -12,7 +13,6 @@ ACCENT = "#2ABFBF"
 TEXT_PRIMARY = "#1B2A2F"
 TEXT_MUTED = "#6B8A8A"
 CARD_BG = "#FFFFFF"
-DANGER = "#E05C5C"
 
 
 class AddPatientDialog(QDialog):
@@ -183,12 +183,19 @@ class AddPatientDialog(QDialog):
 
     def _on_accept(self):
         """Validate input and add patient."""
-        patient_id = self.patient_id_input.text().strip()
+        patient_id = self.patient_id_input.text().strip().upper()
         first_name = self.first_name_input.text().strip()
         last_name = self.last_name_input.text().strip()
         
         if not patient_id:
             QMessageBox.warning(self, "Validation Error", "Patient ID is required.")
+            return
+        if not re.fullmatch(r"P\d{3}", patient_id):
+            QMessageBox.warning(
+                self,
+                "Validation Error",
+                "Patient ID must use the format P###, e.g., P007."
+            )
             return
         if not first_name:
             QMessageBox.warning(self, "Validation Error", "First name is required.")
