@@ -14,7 +14,6 @@ ACCENT = "#2ABFBF"
 TEXT_PRIMARY = "#1B2A2F"
 TEXT_MUTED = "#6B8A8A"
 CARD_BG = "#FFFFFF"
-CONTENT_BG = "#F0F7F7"
 
 
 class AuditWidget(QWidget):
@@ -177,6 +176,7 @@ class AuditWidget(QWidget):
         records = get_audit_log(patient_id)
 
         if not records:
+            self.table.setRowCount(0)
             self.table.setVisible(False)
             self.empty_label.setVisible(True)
             return
@@ -199,7 +199,7 @@ class AuditWidget(QWidget):
             self.table.setItem(row, 0, QTableWidgetItem(ts))
             self.table.setItem(row, 1, QTableWidgetItem(patient_name))
             self.table.setItem(row, 2, QTableWidgetItem(recommended_action or ""))
-            self.table.setItem(row, 3, QTableWidgetItem(f"{score:.3f}" if score else ""))
+            self.table.setItem(row, 3, QTableWidgetItem(f"{score:.3f}" if score is not None else ""))
 
             decision_item = QTableWidgetItem(decision.upper() if decision else "")
             if decision == "accept":
