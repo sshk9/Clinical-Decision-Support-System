@@ -1,6 +1,5 @@
 from __future__ import annotations
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, QGridLayout
-from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
 import matplotlib
 matplotlib.use('Qt5Agg')
@@ -66,6 +65,22 @@ class RiskBenefitPlot(QWidget):
         self.legend_layout.setVerticalSpacing(12)
         self.card_layout.addWidget(self.legend_container)
 
+        # Explanation Note
+        self.note_label = QLabel(
+            "Note: This plot shows the short-term net benefit for each action, calculated from benefit, risk, and cost. "
+            "The ranked recommendation table above is based on the decision engine's total score, "
+            "which combines immediate utility with long-term value from value iteration."
+        )
+        self.note_label.setWordWrap(True)
+        self.note_label.setFont(QFont("Segoe UI", 9))
+        self.note_label.setStyleSheet(f"""
+            color: {TEXT_MUTED};
+            background: transparent;
+            border: none;
+            margin-top: 8px;
+        """)
+        self.card_layout.addWidget(self.note_label)
+
 
         # Add the card to the base layout
         base_layout.addWidget(self.card_frame)
@@ -78,28 +93,28 @@ class RiskBenefitPlot(QWidget):
             self.setVisible(False)
             return
 
-        action_names, benefits, risks, net_utilities = [], [], [], []
+        action_names, benefits, risks, short_term_net_benefits = [], [], [], []
         for row in data:
             if len(row) >= 4:
                 name, benefit, risk, cost = row
                 action_names.append(name)
                 benefits.append(benefit)
                 risks.append(risk)
-                net_utilities.append(benefit - risk - cost)
+                short_term_net_benefits.append(benefit - risk - cost)
 
         if not action_names:
             self.setVisible(False)
             return
 
         self.setVisible(True)
-        self._draw_plot(benefits, risks, net_utilities)
-        self._update_legend(action_names, net_utilities)
+        self._draw_plot(benefits, risks, short_term_net_benefits)
+        self._update_legend(action_names, short_term_net_benefits)
 
-    def _draw_plot(self, benefits, risks, net_utilities):
+    def _draw_plot(self, benefits, risks, short_term_net_benefits):
         self.figure.clear()
         ax = self.figure.add_subplot(111, facecolor='#FDFDFD')
 
-        scatter = ax.scatter(benefits, risks, c=net_utilities, cmap='RdYlGn',
+        scatter = ax.scatter(benefits, risks, c=short_term_net_benefits, cmap='RdYlGn',
                              s=150, alpha=0.9, edgecolors=TEXT_PRIMARY, linewidth=1)
 
         max_val = max(max(benefits), max(risks)) + 0.1
@@ -116,7 +131,7 @@ class RiskBenefitPlot(QWidget):
 
         cbar = self.figure.colorbar(scatter, ax=ax, fraction=0.03, pad=0.04)
         cbar.outline.set_visible(False)
-        cbar.set_label('Net Utility', size=8, color=TEXT_MUTED)
+        cbar.set_label('Short-Term Net Benefit', size=8, color=TEXT_MUTED)
 
         self.figure.tight_layout()
         self.canvas.draw()
@@ -133,7 +148,7 @@ class RiskBenefitPlot(QWidget):
             
             color_hex = mcolors.to_hex(cmap(norm(values[i])))
             icon = QLabel("●")
-            icon.setStyleSheet(f"color: {color_hex}; font-size: 16px; padding-right: 5px;")
+            icon.setStyleSheet(f"color: {color_hex}; font-size: 30px; padding-right: 3px;")
             
             label = QLabel(name)
             label.setFont(QFont("Segoe UI", 10))
