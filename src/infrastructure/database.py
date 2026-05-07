@@ -600,12 +600,13 @@ def get_state_distribution() -> List[Dict[str, Any]]:
     Powers the population health trend analytics.
 
     Returns:
-        List of dicts with keys: disease_name, state_name,
+        List of dicts with keys: disease_id, disease_name, state_name,
         severity_level, patient_count
     """
     with get_connection() as conn:
         cursor = conn.execute("""
             SELECT
+                d.id    AS disease_id,
                 d.name  AS disease_name,
                 ds.state_name,
                 ds.severity_level,
@@ -619,10 +620,11 @@ def get_state_distribution() -> List[Dict[str, Any]]:
         results = []
         for row in cursor.fetchall():
             results.append({
-                "disease_name":   row[0],
-                "state_name":     row[1],
-                "severity_level": row[2],
-                "patient_count":  row[3],
+                "disease_id":      row[0],
+                "disease_name":    row[1],
+                "state_name":      row[2],
+                "severity_level":  row[3],
+                "patient_count":   row[4],
             })
         return results
 

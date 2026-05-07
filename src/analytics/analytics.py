@@ -137,27 +137,37 @@ def get_top_action_recommendation(actions_comparison: List[ActionComparison]) ->
 
 def get_disease_summary(disease_id: int, actions_data: List[Dict], distribution_data: List[Dict]) -> Dict[str, Any]:
     """
-    Generates a comprehensive summary for a disease.
-    
+    Generates a comprehensive summary for a specific disease.
+
     Args:
         disease_id: Disease ID to summarize
-        actions_data: From get_action_utility_comparison()
+        actions_data: From get_action_utility_comparison(disease_id)
         distribution_data: From get_state_distribution()
-        
+
     Returns:
         Dictionary with disease insights
     """
     comparisons = compare_actions(actions_data)
-    success_rates = state_success_rate(distribution_data)
-    
-    # Find this disease in distribution
-    disease_name = None
-    disease_success_rate = 0
-    for disease, stats in success_rates["by_disease"].items():
-        if disease_name is None:
-            disease_name = disease
-            disease_success_rate = stats["success_rate"]
-    
+
+    disease_distribution = [
+        item for item in distribution_data
+        if item.get("disease_id") == disease_id
+    ]
+
+    success_rates = state_success_rate(disease_distribution)
+
+    disease_name = (
+        disease_distribution[0]["disease_name"]
+        if disease_distribution
+        else "Unknown disease"
+    )
+
+    disease_success_rate = (
+        success_rates["by_disease"][disease_name]["success_rate"]
+        if disease_name in success_rates["by_disease"]
+        else 0
+    )
+
     return {
         "disease_name": disease_name,
         "top_action": get_top_action_recommendation(comparisons),
