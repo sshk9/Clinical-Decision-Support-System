@@ -176,19 +176,19 @@ class ComparisonWidget(QWidget):
             return placeholder
 
         action_names = [c.action_name for c in comparisons]
-        net_utilities = [c.net_utility for c in comparisons]
+        short_term_net_benefits = [c.net_utility for c in comparisons]
 
         fig = Figure(figsize=(8, 4), dpi=100)
         canvas = FigureCanvasQTAgg(fig)
         ax = fig.add_subplot(111)
 
-        bars = ax.barh(action_names, net_utilities, color=TEXT_MUTED, height=0.6)
+        bars = ax.barh(action_names, short_term_net_benefits, color=TEXT_MUTED, height=0.6)
 
         if bars:
             bars[0].set_color(ACCENT)
 
-        ax.set_xlabel("Net Utility (Benefit - Risk - Cost)", fontsize=11)
-        ax.set_title(f"Action Effectiveness Ranking – {disease_name}", fontsize=13, fontweight='bold')
+        ax.set_xlabel("Short-Term Net Benefit (Benefit - Risk - Cost)", fontsize=11)
+        ax.set_title(f"Short-Term Action Effectiveness – {disease_name}", fontsize=13, fontweight='bold')
         ax.axvline(x=0, color='gray', linestyle='--', linewidth=0.8)
         ax.set_facecolor(CARD_BG)
         fig.tight_layout(pad=2.0)
@@ -267,7 +267,7 @@ class ComparisonWidget(QWidget):
 
         table = QTableWidget()
         table.setColumnCount(4)
-        table.setHorizontalHeaderLabels(["Action", "Benefit", "Risk", "Net Utility"])
+        table.setHorizontalHeaderLabels(["Action", "Benefit", "Risk", "Short-Term Net Benefitnet_utilities = [c.net_utility for c in comparisons]"])
         table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
         table.setEditTriggers(QTableWidget.NoEditTriggers)
         table.setAlternatingRowColors(True)
@@ -339,7 +339,7 @@ class ComparisonWidget(QWidget):
 
             top_actions_text = "Most Effective Strategies:\n"
             for i, action in enumerate(comparisons[:3], 1):
-                top_actions_text += f"  {i}. {action.action_name} (net: {action.net_utility:.2f})\n"
+                top_actions_text += f"  {i}. {action.action_name} (short-term net benefit: {action.net_utility:.2f})\n"
 
             top_label = QLabel(top_actions_text)
             top_label.setStyleSheet(f"color: {TEXT_PRIMARY}; font-size: 12px;")
@@ -361,7 +361,11 @@ class ComparisonWidget(QWidget):
         rec_label.setStyleSheet(f"color: {ACCENT};")
         layout.addWidget(rec_label)
 
-        rec_text = QLabel("Consider the highest-ranked action for each patient based on their current clinical state.")
+        rec_text = QLabel(
+            "Use this panel to compare short-term benefit/risk/cost trade-offs between patients. "
+            "Final recommendations should be interpreted together with the ranked action table, "
+            "which includes long-term value from value iteration."
+        )
         rec_text.setStyleSheet(f"color: {TEXT_MUTED}; font-size: 12px;")
         rec_text.setWordWrap(True)
         layout.addWidget(rec_text)
