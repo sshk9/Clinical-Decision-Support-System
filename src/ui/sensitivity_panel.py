@@ -1,5 +1,5 @@
 from __future__ import annotations
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QSlider, QSpinBox, QFrame
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QSlider, QComboBox, QFrame
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
 from ..decision_engine.engine import ActionScore
@@ -24,12 +24,6 @@ class SensitivityAnalysisPanel(QWidget):
         base_layout = QVBoxLayout(self)
         base_layout.setContentsMargins(0, 0, 0, 0)
         base_layout.setSpacing(10)
-
-        # Header
-        self.header_label = QLabel("Sensitivity Analysis")
-        self.header_label.setFont(QFont("Segoe UI", 14, QFont.Bold))
-        self.header_label.setStyleSheet(f"color: {TEXT_PRIMARY}; background: transparent; border: none;")
-        base_layout.addWidget(self.header_label)
 
         # The main card
         self.card_frame = QFrame()
@@ -83,15 +77,19 @@ class SensitivityAnalysisPanel(QWidget):
         card_layout.addSpacing(20)
 
         # --- Risk Tolerance (±) ---
-        risk_label = QLabel("RISK TOLERANCE +/-")
+        risk_label = QLabel("RISK PENALTY WEIGHT")
         risk_label.setStyleSheet(f"color: {TEXT_MUTED}; font-size: 10px; font-weight: 800; letter-spacing: 1px;")
         card_layout.addWidget(risk_label)
         card_layout.addSpacing(8)
 
-        self.risk_spin = QSpinBox()
-        self.risk_spin.setRange(-5, 5)
-        self.risk_spin.setFixedWidth(65)
-        card_layout.addWidget(self.risk_spin)
+        self.risk_combo = QComboBox()
+        self.risk_combo.addItem("None", 0.0)
+        self.risk_combo.addItem("Low", 0.5)
+        self.risk_combo.addItem("Medium", 1.0)
+        self.risk_combo.addItem("High", 1.5)
+        self.risk_combo.setCurrentIndex(2)
+        self.risk_combo.setFixedWidth(110)
+        card_layout.addWidget(self.risk_combo)
 
         # --- Divider & Results ---
         card_layout.addSpacing(30)
@@ -113,7 +111,7 @@ class SensitivityAnalysisPanel(QWidget):
 
         # Connect signals
         self.gamma_slider.valueChanged.connect(self._update_results)
-        self.risk_spin.valueChanged.connect(self._update_results)
+        self.risk_combo.currentIndexChanged.connect(self._update_results)
 
     def set_score(self, score: ActionScore):
         self._current_score = score
@@ -127,13 +125,17 @@ class SensitivityAnalysisPanel(QWidget):
         gamma = self.gamma_slider.value() / 100.0
         self.gamma_value.setText(f"{gamma:.2f}")
 
-        # Risk tolerance multiplier: each step ±10%
-        risk_factor = 1.0 + (self.risk_spin.value() * 0.1)
-        new_immediate = self._current_score.immediate_utility * risk_factor
+        risk_penalty_weight = self.risk_combo.currentData()
+        risk_penalty = (self._current_score.risk_score / 100.0) * risk_penalty_weight
 
-        # Future value: only gamma changes (risk tolerance does not affect transitions)
+        # Future value changes with gamma
         future_sum = sum(prob * val for _, prob, val in self._current_score.future_outcomes)
-        new_total = new_immediate + (gamma * future_sum)
+
+        new_total = (
+            self._current_score.immediate_utility
+            + (gamma * future_sum)
+            - risk_penalty
+        )
 
         diff = new_total - self._current_score.total_score
 

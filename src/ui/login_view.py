@@ -1,10 +1,10 @@
 from __future__ import annotations
 from PyQt5.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout,
+    QDialog, QVBoxLayout,
     QLabel, QLineEdit, QPushButton, QMessageBox, QFrame, QGraphicsDropShadowEffect
 )
 from PyQt5.QtCore import Qt, QPoint
-from PyQt5.QtGui import QColor, QFont
+from PyQt5.QtGui import QColor
 from ..infrastructure.auth_service import verify_credentials
 
 class LoginView(QDialog):
@@ -105,6 +105,7 @@ class LoginView(QDialog):
         self._password.setPlaceholderText("••••••••")
         self._password.setEchoMode(QLineEdit.Password)
         card_layout.addWidget(self._password)
+        self._username.returnPressed.connect(self._focus_password)
 
         card_layout.addSpacing(40)
 
@@ -114,7 +115,7 @@ class LoginView(QDialog):
         self.login_btn.clicked.connect(self._on_login)
         card_layout.addWidget(self.login_btn)
 
-        cancel_btn = QPushButton("Go Back")
+        cancel_btn = QPushButton("Exit")
         cancel_btn.setObjectName("CancelButton")
         cancel_btn.setCursor(Qt.PointingHandCursor)
         cancel_btn.clicked.connect(self.reject)
@@ -123,8 +124,14 @@ class LoginView(QDialog):
         self.main_layout.addWidget(self.container)
         self._username.setFocus()
 
+    def _focus_password(self) -> None:
+        self._password.setFocus()
+
     def _on_login(self) -> None:
-        if verify_credentials(self._username.text(), self._password.text()):
+        username = self._username.text().strip()
+        password = self._password.text()
+
+        if verify_credentials(username, password):
             self.accept()
         else:
             QMessageBox.critical(self, "Error", "Invalid Credentials")

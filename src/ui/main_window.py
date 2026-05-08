@@ -1,8 +1,10 @@
+
+
 from __future__ import annotations
 from PyQt5.QtWidgets import (
     QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
-    QPushButton, QLabel, QListWidget, QListWidgetItem,
-    QStackedWidget, QFrame, QSizePolicy, QTableWidget,
+    QPushButton, QLabel, QListWidget,
+    QStackedWidget, QFrame, QTableWidget,
     QTableWidgetItem, QHeaderView, QComboBox, QProgressBar,
     QTreeWidget, QTreeWidgetItem, QScrollArea, QLineEdit,
     QFileDialog, QMessageBox
@@ -13,7 +15,6 @@ from PyQt5.QtGui import QFont, QColor
 from ..domain.patient import Patient
 from ..domain.action import Action
 from ..decision_engine.engine import DecisionEngine, ActionScore
-from ..domain.patient_record import PatientRecord
 from .comparison_widget import ComparisonWidget
 from .trend_widget import TrendWidget
 from .sensitivity_panel import SensitivityAnalysisPanel
@@ -51,13 +52,6 @@ SEV_COLORS    = {
     5: "#C0392B",
 }
 
-STATE_COLORS = {
-    1: SUCCESS,
-    2: "#8BC34A",
-    3: WARNING,
-    4: DANGER,
-    5: "#7B1FA2",
-}
 
 RISK_COL_W  = 120
 BADGE_W     = 80
@@ -418,68 +412,9 @@ class PatientView(QWidget):
         action_row.addStretch()
         root.addLayout(action_row)
 
-        # ── Decision Buttons Row 
-        decision_layout = QHBoxLayout()
-        decision_layout.setSpacing(12)
-
-        self.accept_btn = QPushButton("✓ Accept")
-        self.accept_btn.setFixedHeight(36)
-        self.accept_btn.setStyleSheet(f"""
-            QPushButton {{
-                background-color: #28A745;
-                color: white;
-                border-radius: 6px;
-                font-weight: bold;
-                padding: 0 16px;
-            }}
-            QPushButton:hover {{ background-color: #218838; }}
-            QPushButton:disabled {{ background-color: #6C757D; }}
-        """)
-        self.accept_btn.clicked.connect(self._on_accept)
-
-        self.reject_btn = QPushButton("✗ Reject")
-        self.reject_btn.setFixedHeight(36)
-        self.reject_btn.setStyleSheet(f"""
-            QPushButton {{
-                background-color: #DC3545;
-                color: white;
-                border-radius: 6px;
-                font-weight: bold;
-                padding: 0 16px;
-            }}
-            QPushButton:hover {{ background-color: #C82333; }}
-            QPushButton:disabled {{ background-color: #6C757D; }}
-        """)
-        self.reject_btn.clicked.connect(self._on_reject)
-
-        self.override_btn = QPushButton("↩ Override")
-        self.override_btn.setFixedHeight(36)
-        self.override_btn.setStyleSheet(f"""
-            QPushButton {{
-                background-color: #FD7E14;
-                color: white;
-                border-radius: 6px;
-                font-weight: bold;
-                padding: 0 16px;
-            }}
-            QPushButton:hover {{ background-color: #E06600; }}
-            QPushButton:disabled {{ background-color: #6C757D; }}
-        """)
-        self.override_btn.clicked.connect(self._on_override)
-
-        decision_layout.addWidget(self.accept_btn)
-        decision_layout.addWidget(self.reject_btn)
-        decision_layout.addWidget(self.override_btn)
-        decision_layout.addStretch()
-        root.addLayout(decision_layout)
-
-        # Confirmation label
-        self.confirmation_label = _label("", size=11, muted=True)
-        self.confirmation_label.setVisible(False)
-        root.addWidget(self.confirmation_label)
-
         # Ranked actions table
         root.addWidget(_label("Ranked Actions", 15, bold=True))
+
         self._table = QTableWidget(0, 4)
         self._table.setHorizontalHeaderLabels(
             ["Action", "Immediate Utility", "Long-Term Value", "Total Score"]
@@ -511,8 +446,78 @@ class PatientView(QWidget):
         """)
         root.addWidget(self._table)
 
+        # ── Decision Buttons Row 
+        decision_layout = QHBoxLayout()
+        decision_layout.setSpacing(12)
+
+        self.accept_btn = QPushButton("✓ Accept Top Recommendation")
+        self.accept_btn.setFixedHeight(36)
+        self.accept_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: #28A745;
+                color: white;
+                border-radius: 6px;
+                font-weight: bold;
+                padding: 0 16px;
+            }}
+            QPushButton:hover {{ background-color: #218838; }}
+            QPushButton:disabled {{ background-color: #6C757D; }}
+        """)
+        self.accept_btn.clicked.connect(self._on_accept)
+
+        self.reject_btn = QPushButton("✗ Reject Recommendation")
+        self.reject_btn.setFixedHeight(36)
+        self.reject_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: #DC3545;
+                color: white;
+                border-radius: 6px;
+                font-weight: bold;
+                padding: 0 16px;
+            }}
+            QPushButton:hover {{ background-color: #C82333; }}
+            QPushButton:disabled {{ background-color: #6C757D; }}
+        """)
+        self.reject_btn.clicked.connect(self._on_reject)
+
+        self.override_btn = QPushButton("↩ Override with Selected Action")
+        self.override_btn.setFixedHeight(36)
+        self.override_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: #FD7E14;
+                color: white;
+                border-radius: 6px;
+                font-weight: bold;
+                padding: 0 16px;
+            }}
+            QPushButton:hover {{ background-color: #E06600; }}
+            QPushButton:disabled {{ background-color: #6C757D; }}
+        """)
+        self.override_btn.clicked.connect(self._on_override)
+
+        decision_layout.addWidget(self.accept_btn)
+        decision_layout.addWidget(self.reject_btn)
+        decision_layout.addWidget(self.override_btn)
+        decision_layout.addStretch()
+        root.addLayout(decision_layout)
+
+        # Confirmation label
+        self.confirmation_label = _label("", size=11, muted=True)
+        self.confirmation_label.setVisible(False)
+        root.addWidget(self.confirmation_label)
+
+        decision_hint = _label(
+            "Select an action from the ranking, then record the clinician decision below. "
+            "Accept records the top recommendation. Override records the selected lower-ranked action.",
+            size=11,
+            muted=True
+        )
+        decision_hint.setWordWrap(True)
+        root.addWidget(decision_hint)
+
         # Decision trace (Why-Panel)
         root.addWidget(_label("Decision Trace", 15, bold=True))
+
         self.trace_tree = QTreeWidget()
         self.trace_tree.setHeaderLabel("Component")
         self.trace_tree.setMinimumHeight(180)
@@ -526,10 +531,32 @@ class PatientView(QWidget):
         """)
         root.addWidget(self.trace_tree)
 
+        trace_hint = _label(
+            "This section explains the currently selected action from the ranked list above. "
+            "Click a different action row to update the Decision Trace and Sensitivity Analysis.",
+            size=11,
+            muted=True
+        )
+        trace_hint.setWordWrap(True)
+        root.addWidget(trace_hint)
+
         # Sensitivity analysis panel
+        root.addWidget(_label("Sensitivity Analysis", 15, bold=True))
+
         self.sensitivity_panel = SensitivityAnalysisPanel()
         self.sensitivity_panel.setMinimumHeight(280)
         root.addWidget(self.sensitivity_panel)
+
+        sensitivity_hint = _label(
+            "This panel shows a what-if projected score for the selected action. "
+            "Future value weight adjusts the importance of future outcomes, while risk penalty reduces the score based on clinical risk. "
+            "Unlike the ranked table's Total Score, this Projected Score includes the risk penalty.",
+            size=11,
+            muted=True
+        )
+        sensitivity_hint.setWordWrap(True)
+        root.addWidget(sensitivity_hint)
+        
 
         # Risk-Benefit Plot
         self.risk_benefit_plot = RiskBenefitPlot()
@@ -797,7 +824,7 @@ class PatientView(QWidget):
         if row == 0:
             top_score = self._current_scores[0]
             self._show_confirmation(
-                f"That is the top recommendation — use Accept instead (Accepted — {top_score.action.name})",
+                 f"That is already the top recommendation — use Accept Top Recommendation for {top_score.action.name}.",
                 is_error=True
             )
             return
@@ -1292,3 +1319,5 @@ class MainWindow(QMainWindow):
         """Load patients from the database via the patient service."""
         from ..infrastructure.patient_service import load_patients_with_actions
         self._management_view.set_patients(load_patients_with_actions())
+
+
