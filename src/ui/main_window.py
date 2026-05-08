@@ -556,7 +556,7 @@ class PatientView(QWidget):
         )
         sensitivity_hint.setWordWrap(True)
         root.addWidget(sensitivity_hint)
-        
+
 
         # Risk-Benefit Plot
         self.risk_benefit_plot = RiskBenefitPlot()
@@ -577,6 +577,7 @@ class PatientView(QWidget):
         """)
         root.addWidget(self._history_list)
 
+        # Transition Impact
         root.addWidget(_label("Transition Impact — Last Action", 15, bold=True))
         self._transition_card = _card()
         self._transition_layout = QVBoxLayout(self._transition_card)
@@ -585,6 +586,14 @@ class PatientView(QWidget):
         self._transition_placeholder = _label("No action applied yet.", muted=True)
         self._transition_layout.addWidget(self._transition_placeholder)
         root.addWidget(self._transition_card)
+
+        transition_hint = _label(
+            "Shows how the last applied action changed transition probabilities from the patient state at the time of action.",
+            size=11,
+            muted=True
+        )
+        transition_hint.setWordWrap(True)
+        root.addWidget(transition_hint)
 
         root.addStretch(1)
 
@@ -735,24 +744,31 @@ class PatientView(QWidget):
         )
 
         changed = False
-        for from_state in states:
-            for to_state in states:
-                p_before = before[from_state][to_state]
-                p_after = after[from_state][to_state]
-                if abs(p_after - p_before) > 1e-9:
-                    changed = True
-                    diff = p_after - p_before
-                    arrow = "↑" if diff > 0 else "↓"
-                    color = SUCCESS if diff > 0 else DANGER
-                    row_text = (
-                        f"{from_state} → {to_state}:   "
-                        f"{p_before:.3f}  →  {p_after:.3f}  {arrow}"
-                    )
-                    lbl = _label(row_text)
-                    lbl.setStyleSheet(
-                        f"color: {color}; background: transparent; border: none; font-size: 13px;"
-                    )
-                    self._transition_layout.addWidget(lbl)
+        from_state = summary["state"]
+
+        for to_state in states:
+            p_before = before[from_state][to_state]
+            p_after = after[from_state][to_state]
+
+            if abs(p_after - p_before) > 1e-9:
+                changed = True
+                diff = p_after - p_before
+                arrow = "↑" if diff > 0 else "↓"
+
+                # Improvement is good if probability increased toward a better state,
+                # but here we only show direction of probability change.
+                color = SUCCESS if diff > 0 else DANGER
+
+                row_text = (
+                    f"{from_state} → {to_state}:   "
+                    f"{p_before:.3f}  →  {p_after:.3f}  {arrow}"
+                )
+
+                lbl = _label(row_text)
+                lbl.setStyleSheet(
+                    f"color: {color}; background: transparent; border: none; font-size: 13px;"
+                )
+                self._transition_layout.addWidget(lbl)
 
         if not changed:
             self._transition_layout.addWidget(
