@@ -755,9 +755,7 @@ class PatientView(QWidget):
                 diff = p_after - p_before
                 arrow = "↑" if diff > 0 else "↓"
 
-                # Improvement is good if probability increased toward a better state,
-                # but here we only show direction of probability change.
-                color = SUCCESS if diff > 0 else DANGER
+                color = TEXT_PRIMARY
 
                 row_text = (
                     f"{from_state} → {to_state}:   "
@@ -1323,6 +1321,10 @@ class MainWindow(QMainWindow):
         root.addWidget(self._stack)
 
     def _on_nav_changed(self, idx: int) -> None:
+        if idx == 0:
+            self._dashboard_view._load_stats()
+        elif idx == 4:
+            self._audit_view._refresh()
         self._stack.setCurrentIndex(idx)
 
     def _on_patient_selected(self, patient: Patient, actions: list[Action]) -> None:
