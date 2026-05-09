@@ -507,7 +507,7 @@ class PatientView(QWidget):
         root.addWidget(self.confirmation_label)
 
         decision_hint = _label(
-            "Select an action from the ranking, then record the clinician decision below. "
+            "Click to select an action from the ranking, then record the clinician decision below. "
             "Accept records the top recommendation. Override records the selected lower-ranked action.",
             size=11,
             muted=True
