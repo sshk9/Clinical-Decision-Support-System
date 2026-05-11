@@ -11,8 +11,11 @@ matplotlib.use('Qt5Agg')
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 
-from ...infrastructure.database import get_state_distribution, get_action_utility_comparison, get_connection
-from ...analytics.analytics import compare_actions
+from ...application.trend_service import (
+    get_available_diseases,
+    get_population_distribution,
+    get_action_effectiveness_for_disease,
+)
 
 
 ACCENT = "#2ABFBF"
@@ -76,10 +79,20 @@ class TrendWidget(QWidget):
 
     def _load_data(self):
         """Load available diseases for filter"""
-        with get_connection() as conn:
-            cursor = conn.execute("SELECT DISTINCT name FROM disease ORDER BY name")
-            for row in cursor.fetchall():
-                self.disease_filter.addItem(row[0])
+        self.disease_filter.blockSignals(True)
+        current = self.disease_filter.currentText()
+
+        self.disease_filter.clear()
+        self.disease_filter.addItem("All Diseases")
+
+        for disease_name in get_available_diseases():
+            self.disease_filter.addItem(disease_name)
+
+        index = self.disease_filter.findText(current)
+        if index >= 0:
+            self.disease_filter.setCurrentIndex(index)
+
+        self.disease_filter.blockSignals(False)
         
         self._refresh()
 
@@ -97,7 +110,7 @@ class TrendWidget(QWidget):
         selected_disease = self.disease_filter.currentText()
         
         # Get distribution data
-        distribution = get_state_distribution()
+        distribution = get_population_distribution()
         
         # Filter by disease if needed
         if selected_disease != "All Diseases":
@@ -269,15 +282,7 @@ class TrendWidget(QWidget):
 
     def _create_action_effectiveness_chart(self, disease_name):
         """Create a bar chart of action effectiveness for the selected disease"""
-        with get_connection() as conn:
-            cursor = conn.execute("SELECT id FROM disease WHERE name = ?", (disease_name,))
-            result = cursor.fetchone()
-            if not result:
-                return None
-            disease_id = result[0]
-        
-        actions_data = get_action_utility_comparison(disease_id)
-        comparisons = compare_actions(actions_data)
+        comparisons = get_action_effectiveness_for_disease(disease_name)
         
         if not comparisons:
             return None
