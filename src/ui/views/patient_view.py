@@ -11,7 +11,7 @@ from PyQt5.QtGui import QFont, QColor
 from ...domain.patient import Patient
 from ...domain.action import Action
 from ...decision_engine.engine import DecisionEngine, ActionScore
-from ...infrastructure.database import log_recommendation
+from ...application.decision_audit_service import record_clinician_decision
 from ..widgets.sensitivity_panel import SensitivityAnalysisPanel
 from ..charts.risk_benefit_plot import RiskBenefitPlot
 from ..ui_helpers import (
@@ -525,11 +525,11 @@ class PatientView(QWidget):
         if not self._current_scores or self._patient is None:
             return
         top_score = self._current_scores[0]
-        log_recommendation(
+        record_clinician_decision(
             patient_id=self._patient.patient_id,
             recommended_action=top_score.action.name,
             recommended_score=top_score.total_score,
-            clinician_decision='accept'
+            clinician_decision="accept",
         )
         self._show_confirmation(f"✓ Decision recorded: Accepted — {top_score.action.name}")
 
@@ -538,11 +538,11 @@ class PatientView(QWidget):
         if not self._current_scores or self._patient is None:
             return
         top_score = self._current_scores[0]
-        log_recommendation(
+        record_clinician_decision(
             patient_id=self._patient.patient_id,
             recommended_action=top_score.action.name,
             recommended_score=top_score.total_score,
-            clinician_decision='reject'
+            clinician_decision="reject",
         )
         self._show_confirmation("✗ Decision recorded: Rejected — No action taken")
 
@@ -568,12 +568,12 @@ class PatientView(QWidget):
         selected_score = self._current_scores[row]
         top_score = self._current_scores[0]
 
-        log_recommendation(
+        record_clinician_decision(
             patient_id=self._patient.patient_id,
             recommended_action=top_score.action.name,
             recommended_score=top_score.total_score,
-            clinician_decision='override',
-            override_action=selected_score.action.name
+            clinician_decision="override",
+            override_action=selected_score.action.name,
         )
         self._show_confirmation(f"↩ Decision recorded: Override — {selected_score.action.name}")
 
