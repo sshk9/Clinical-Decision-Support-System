@@ -6,7 +6,9 @@ from PyQt5.QtGui import QFont
 
 from .ui_helpers import _label, ACCENT
 
-
+# ---------------------------------------------------------------------------
+# Sidebar
+# ---------------------------------------------------------------------------
 class Sidebar(QWidget):
     nav_changed = pyqtSignal(int)
 

@@ -11,7 +11,6 @@ from .ui_helpers import (
 from ..infrastructure.database import get_connection, get_state_distribution
 from ..analytics.analytics import state_success_rate
 
-
 # ---------------------------------------------------------------------------
 # Dashboard view
 # ---------------------------------------------------------------------------
