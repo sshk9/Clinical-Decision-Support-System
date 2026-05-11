@@ -13,7 +13,11 @@ from ..ui_helpers import (
     TEXT_MUTED, BORDER, HOVER_ROW, SEV_COLORS, RISK_COL_W,
     _label, _Badge
 )
-from ...infrastructure.database import get_all_patients_detailed
+from ...application.patient_management_service import (
+    get_detailed_patients,
+    get_patient_export_rows,
+    reload_patients_with_actions,
+)
 
 # ---------------------------------------------------------------------------
 # Patient management view
@@ -202,7 +206,7 @@ class PatientManagementView(QWidget):
         self._refresh_table()
 
     def _refresh_table(self, filter_text: str = "") -> None:
-        detailed_patients = get_all_patients_detailed()
+        detailed_patients = get_detailed_patients()
         patient_details: dict = {d["patient_id"]: d for d in detailed_patients}
 
         self._table.setRowCount(0)
@@ -299,11 +303,10 @@ class PatientManagementView(QWidget):
             self._load_and_refresh()
 
     def _export_to_csv(self) -> None:
-        from ...infrastructure.database import get_patient_summary_export
         import csv
         from datetime import datetime
 
-        patients = get_patient_summary_export()
+        patients = get_patient_export_rows()
         if not patients:
             QMessageBox.warning(self, "Export Error", "No patient data to export.")
             return
@@ -334,5 +337,4 @@ class PatientManagementView(QWidget):
                                  f"An error occurred while exporting:\n{str(e)}")
 
     def _load_and_refresh(self) -> None:
-        from ...infrastructure.patient_service import load_patients_with_actions
-        self.set_patients(load_patients_with_actions())
+        self.set_patients(reload_patients_with_actions())
