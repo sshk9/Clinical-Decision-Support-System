@@ -8,7 +8,7 @@ from matplotlib.figure import Figure
 import matplotlib.cm as cm
 import matplotlib.colors as mcolors
 
-from ..infrastructure.database import get_benefit_risk_for_patient
+from ...infrastructure.database import get_benefit_risk_for_patient
 
 # colour palette
 TEXT_PRIMARY = "#1B2A2F"

@@ -8,15 +8,15 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QFont, QColor
 
-from ..domain.patient import Patient
-from ..domain.action import Action
-from ..decision_engine.engine import DecisionEngine, ActionScore
-from ..infrastructure.database import log_recommendation
-from .sensitivity_panel import SensitivityAnalysisPanel
-from .risk_benefit_plot import RiskBenefitPlot
-from .ui_helpers import (
+from ...domain.patient import Patient
+from ...domain.action import Action
+from ...decision_engine.engine import DecisionEngine, ActionScore
+from ...infrastructure.database import log_recommendation
+from ..widgets.sensitivity_panel import SensitivityAnalysisPanel
+from ..charts.risk_benefit_plot import RiskBenefitPlot
+from ..ui_helpers import (
     SIDEBAR_BG, CONTENT_BG, ACCENT, ACCENT_DARK, CARD_BG,
-    TEXT_PRIMARY, TEXT_MUTED, BORDER, DANGER, SUCCESS,
+    TEXT_PRIMARY, TEXT_MUTED, BORDER, DANGER,
     _card, _label
 )
 

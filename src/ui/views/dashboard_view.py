@@ -4,12 +4,12 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
 
-from .ui_helpers import (
+from ..ui_helpers import (
     ACCENT, BORDER, DANGER, WARNING,
     _card, _label
 )
-from ..infrastructure.database import get_connection, get_state_distribution
-from ..analytics.analytics import state_success_rate
+from ...infrastructure.database import get_connection, get_state_distribution
+from ...analytics.analytics import state_success_rate
 
 # ---------------------------------------------------------------------------
 # Dashboard view

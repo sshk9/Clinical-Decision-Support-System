@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt, QPoint
 from PyQt5.QtGui import QColor
-from ..infrastructure.auth_service import verify_credentials
+from ...infrastructure.auth_service import verify_credentials
 
 class LoginView(QDialog):
     def __init__(self):

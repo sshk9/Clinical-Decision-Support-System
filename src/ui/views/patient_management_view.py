@@ -8,12 +8,12 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QFont, QColor
 
-from .ui_helpers import (
+from ..ui_helpers import (
     CONTENT_BG, ACCENT, ACCENT_DARK, CARD_BG, TEXT_PRIMARY,
     TEXT_MUTED, BORDER, HOVER_ROW, SEV_COLORS, RISK_COL_W,
     _label, _Badge
 )
-from ..infrastructure.database import get_all_patients_detailed
+from ...infrastructure.database import get_all_patients_detailed
 
 # ---------------------------------------------------------------------------
 # Patient management view
@@ -293,13 +293,13 @@ class PatientManagementView(QWidget):
             self.patient_selected.emit(record.patient, record.actions)
 
     def _on_add_patient(self) -> None:
-        from .add_patient_dialog import AddPatientDialog
+        from ..dialogs.add_patient_dialog import AddPatientDialog
         dialog = AddPatientDialog(self)
         if dialog.exec_():
             self._load_and_refresh()
 
     def _export_to_csv(self) -> None:
-        from ..infrastructure.database import get_patient_summary_export
+        from ...infrastructure.database import get_patient_summary_export
         import csv
         from datetime import datetime
 
@@ -334,5 +334,5 @@ class PatientManagementView(QWidget):
                                  f"An error occurred while exporting:\n{str(e)}")
 
     def _load_and_refresh(self) -> None:
-        from ..infrastructure.patient_service import load_patients_with_actions
+        from ...infrastructure.patient_service import load_patients_with_actions
         self.set_patients(load_patients_with_actions())

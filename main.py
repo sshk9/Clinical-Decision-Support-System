@@ -1,7 +1,7 @@
 import sys
 from PyQt5.QtWidgets import QApplication, QDialog
 from src.ui.main_window import MainWindow
-from src.ui.login_view import LoginView
+from src.ui.dialogs.login_view import LoginView
 from src.infrastructure.database import init_db, seed_data, get_user_by_username
 
 def main() -> None:

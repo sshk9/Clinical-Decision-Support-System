@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton
 from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtGui import QFont
 
-from .ui_helpers import _label, ACCENT
+from ..ui_helpers import _label, ACCENT
 
 # ---------------------------------------------------------------------------
 # Sidebar

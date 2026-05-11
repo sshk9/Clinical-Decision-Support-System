@@ -6,13 +6,13 @@ from ..domain.patient import Patient
 from ..domain.action import Action
 from ..decision_engine.engine import DecisionEngine
 
-from .comparison_widget import ComparisonWidget
-from .trend_widget import TrendWidget
-from .audit_widget import AuditWidget
-from .sidebar import Sidebar
-from .dashboard_view import DashboardView
-from .patient_management_view import PatientManagementView
-from .patient_view import PatientView
+from .views.comparison_widget import ComparisonWidget
+from .views.trend_widget import TrendWidget
+from .views.audit_widget import AuditWidget
+from .widgets.sidebar import Sidebar
+from .views.dashboard_view import DashboardView
+from .views.patient_management_view import PatientManagementView
+from .views.patient_view import PatientView
 from .ui_helpers import CONTENT_BG
 
 # ---------------------------------------------------------------------------

@@ -2,7 +2,7 @@ from __future__ import annotations
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QSlider, QComboBox, QFrame
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
-from ..decision_engine.engine import ActionScore
+from ...decision_engine.engine import ActionScore
 
 # colour palette
 ACCENT = "#2ABFBF"

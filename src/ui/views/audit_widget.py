@@ -8,7 +8,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont, QColor
 import csv
 from datetime import datetime
-from ..infrastructure.database import get_audit_log, get_all_patients
+from ...infrastructure.database import get_audit_log, get_all_patients
 
 ACCENT = "#2ABFBF"
 TEXT_PRIMARY = "#1B2A2F"

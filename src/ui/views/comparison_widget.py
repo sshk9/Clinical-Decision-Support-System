@@ -12,11 +12,11 @@ matplotlib.use('Qt5Agg')
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 
-from ..infrastructure.database import (
+from ...infrastructure.database import (
     get_all_patients, get_actions_for_patient,
     get_action_utility_comparison, get_state_distribution
 )
-from ..analytics.analytics import compare_actions, state_success_rate
+from ...analytics.analytics import compare_actions, state_success_rate
 
 
 SIDEBAR_BG = "#1B2A2F"
@@ -141,7 +141,7 @@ class ComparisonWidget(QWidget):
         return self.patient_disease_map.get(patient_id, "")
 
     def _get_disease_id_by_name(self, disease_name: str) -> int:
-        from ..infrastructure.database import get_connection
+        from ...infrastructure.database import get_connection
         with get_connection() as conn:
             cursor = conn.execute("SELECT id FROM disease WHERE name = ?", (disease_name,))
             result = cursor.fetchone()

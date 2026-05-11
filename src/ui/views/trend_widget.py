@@ -11,8 +11,8 @@ matplotlib.use('Qt5Agg')
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 
-from ..infrastructure.database import get_state_distribution, get_action_utility_comparison, get_connection
-from ..analytics.analytics import compare_actions
+from ...infrastructure.database import get_state_distribution, get_action_utility_comparison, get_connection
+from ...analytics.analytics import compare_actions
 
 
 ACCENT = "#2ABFBF"

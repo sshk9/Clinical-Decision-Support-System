@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
 
-from ..infrastructure.database import get_diseases_with_states, add_patient
+from ...infrastructure.database import get_diseases_with_states, add_patient
 
 ACCENT = "#2ABFBF"
 TEXT_PRIMARY = "#1B2A2F"
