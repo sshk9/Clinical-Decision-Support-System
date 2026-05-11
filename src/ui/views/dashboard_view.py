@@ -8,8 +8,7 @@ from ..ui_helpers import (
     ACCENT, BORDER, DANGER, WARNING,
     _card, _label
 )
-from ...infrastructure.database import get_connection, get_state_distribution
-from ...analytics.analytics import state_success_rate
+from ...application.dashboard_service import get_dashboard_stats
 
 # ---------------------------------------------------------------------------
 # Dashboard view
@@ -88,52 +87,16 @@ class DashboardView(QWidget):
 
     def _load_stats(self) -> None:
         try:
-            conn = get_connection()
-            cursor = conn.cursor()
+            stats = get_dashboard_stats()
 
-            cursor.execute("SELECT COUNT(*) FROM patient")
-            active = cursor.fetchone()[0] or 0
-
-            cursor.execute("""
-                SELECT COUNT(*)
-                FROM patient_status ps
-                JOIN disease_state ds ON ps.current_state_id = ds.id
-                WHERE ds.severity_level >= 4
-            """)
-            high_risk = cursor.fetchone()[0] or 0
-
-            cursor.execute("""
-                SELECT COUNT(*)
-                FROM patient_status ps
-                JOIN disease_state ds ON ps.current_state_id = ds.id
-                WHERE ds.severity_level = 5
-            """)
-            critical = cursor.fetchone()[0] or 0
-
-            cursor.execute("""
-                SELECT d.name, COUNT(ps.patient_id)
-                FROM patient_status ps
-                JOIN disease d ON ps.disease_id = d.id
-                GROUP BY d.id, d.name
-            """)
-            d1 = d2 = 0
-            for disease_name, count in cursor.fetchall():
-                if "Diabetes" in disease_name:
-                    d1 = count
-                elif "Kidney" in disease_name:
-                    d2 = count
-
-            conn.close()
-
-            distribution = get_state_distribution()
-            stats_data = state_success_rate(distribution)
-            overall = stats_data.get(
-                "overall",
-                {"success_rate": 0, "total_patients": 0, "success_count": 0},
-            )
-            rate  = overall.get("success_rate", 0)
-            count = overall.get("success_count", 0)
-            total = overall.get("total_patients", 0)
+            active = stats["active"]
+            high_risk = stats["high_risk"]
+            critical = stats["critical"]
+            d1 = stats["diabetes_count"]
+            d2 = stats["kidney_count"]
+            rate = stats["success_rate"]
+            count = stats["success_count"]
+            total = stats["total_patients"]
 
             # Update stat cards
             self.cards["active"].setText(str(active))
@@ -147,22 +110,31 @@ class DashboardView(QWidget):
                 self.cards["high_risk"].setStyleSheet(
                     f"color: {DANGER}; background: transparent; border: none; font-weight: bold;"
                 )
+            else:
+                self.cards["high_risk"].setStyleSheet(
+                    "background: transparent; border: none; font-weight: bold;"
+                )
+
             if critical > 0:
                 self.cards["critical"].setStyleSheet(
                     f"color: {DANGER}; background: transparent; border: none; font-weight: bold;"
+                )
+            else:
+                self.cards["critical"].setStyleSheet(
+                    "background: transparent; border: none; font-weight: bold;"
                 )
 
             # Health status banner
             if rate >= 80:
                 status, bg, fg = "Excellent", "#E8F5E9", "#28A745"
             elif rate >= 60:
-                status, bg, fg = "Good",      "#E0F7FA", ACCENT
+                status, bg, fg = "Good", "#E0F7FA", ACCENT
             elif rate >= 40:
-                status, bg, fg = "Moderate",  "#FFF8E1", "#F9A825"
+                status, bg, fg = "Moderate", "#FFF8E1", "#F9A825"
             elif rate >= 20:
-                status, bg, fg = "Poor",      "#FFF3E0", WARNING
+                status, bg, fg = "Poor", "#FFF3E0", WARNING
             else:
-                status, bg, fg = "Critical",  "#FFEBEE", DANGER
+                status, bg, fg = "Critical", "#FFEBEE", DANGER
 
             self.health_status_label.setText(
                 f"Population Health Status: {status}\n"
@@ -183,6 +155,7 @@ class DashboardView(QWidget):
             print("Dashboard load error:", e)
             for key in ("active", "high_risk", "critical", "disease_1", "disease_2"):
                 self.cards[key].setText("0")
+
             self.health_status_label.setText("Population Health Status: Data unavailable")
             self.health_status_label.setStyleSheet("""
                 QLabel {
