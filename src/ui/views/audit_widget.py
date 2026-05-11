@@ -8,7 +8,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont, QColor
 import csv
 from datetime import datetime
-from ...infrastructure.database import get_audit_log, get_all_patients
+from ...application.audit_service import get_audit_patients, get_audit_records
 
 ACCENT = "#2ABFBF"
 TEXT_PRIMARY = "#1B2A2F"
@@ -166,14 +166,14 @@ class AuditWidget(QWidget):
         root.addWidget(self.empty_label)
 
     def _load_patients(self):
-        patients = get_all_patients()
+        patients = get_audit_patients()
         self.patient_filter.addItem("All Patients", None)
         for pid, name, state, disease in patients:
             self.patient_filter.addItem(f"{name} ({pid}) – {disease}", pid)
 
     def _refresh(self):
         patient_id = self.patient_filter.currentData()
-        records = get_audit_log(patient_id)
+        records = get_audit_records(patient_id)
 
         if not records:
             self.table.setRowCount(0)
