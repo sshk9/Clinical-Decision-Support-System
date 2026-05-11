@@ -213,6 +213,23 @@ class AuditWidget(QWidget):
 
         self.table.resizeRowsToContents()
 
+    def reload(self):
+        """Reload patient filter and audit records from the database."""
+        current_patient_id = self.patient_filter.currentData()
+
+        self.patient_filter.blockSignals(True)
+        self.patient_filter.clear()
+        self._load_patients()
+
+        index = self.patient_filter.findData(current_patient_id)
+        if index >= 0:
+            self.patient_filter.setCurrentIndex(index)
+        else:
+            self.patient_filter.setCurrentIndex(0)
+
+        self.patient_filter.blockSignals(False)
+        self._refresh()
+
     def _export_to_csv(self):
         if self.table.rowCount() == 0:
             QMessageBox.warning(self, "Export Error", "No data to export.")
@@ -239,3 +256,5 @@ class AuditWidget(QWidget):
             QMessageBox.information(self, "Export Successful", f"Audit log exported to:\n{filename}")
         except Exception as e:
             QMessageBox.critical(self, "Export Failed", f"An error occurred:\n{str(e)}")
+
+

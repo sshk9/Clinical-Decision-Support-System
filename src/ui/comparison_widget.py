@@ -149,6 +149,37 @@ class ComparisonWidget(QWidget):
                 return result[0]
         return None
 
+    def reload(self):
+        """Reload patients from the database and reset comparison content."""
+        current_a = self.patient_a_combo.currentData()
+        current_b = self.patient_b_combo.currentData()
+
+        self.patient_a_combo.blockSignals(True)
+        self.patient_b_combo.blockSignals(True)
+
+        self.patient_a_combo.clear()
+        self.patient_b_combo.clear()
+        self.patient_disease_map.clear()
+
+        self._load_patients()
+
+        index_a = self.patient_a_combo.findData(current_a)
+        index_b = self.patient_b_combo.findData(current_b)
+
+        if index_a >= 0:
+            self.patient_a_combo.setCurrentIndex(index_a)
+        if index_b >= 0:
+            self.patient_b_combo.setCurrentIndex(index_b)
+
+        self.patient_a_combo.blockSignals(False)
+        self.patient_b_combo.blockSignals(False)
+
+        self._clear_content()
+        self.placeholder = QLabel("Select two patients and click 'Compare' to see side-by-side analysis")
+        self.placeholder.setAlignment(Qt.AlignCenter)
+        self.placeholder.setStyleSheet(f"color: {TEXT_MUTED}; font-size: 14px;")
+        self.content_layout.addWidget(self.placeholder)
+
     def _get_patient_name(self, patient_id: str) -> str:
         for pid, name, state, disease in self.patients_data:
             if pid == patient_id:
@@ -267,7 +298,9 @@ class ComparisonWidget(QWidget):
 
         table = QTableWidget()
         table.setColumnCount(4)
-        table.setHorizontalHeaderLabels(["Action", "Benefit", "Risk", "Short-Term Net Benefitnet_utilities = [c.net_utility for c in comparisons]"])
+        table.setHorizontalHeaderLabels([
+            "Action", "Benefit", "Risk", "Short-Term Net Benefit"
+        ])
         table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
         table.setEditTriggers(QTableWidget.NoEditTriggers)
         table.setAlternatingRowColors(True)

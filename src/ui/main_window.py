@@ -1,35 +1,19 @@
 from __future__ import annotations
-from PyQt5.QtWidgets import (
-    QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
-    QPushButton, QLabel, QListWidget,
-    QStackedWidget, QFrame, QTableWidget,
-    QTableWidgetItem, QHeaderView, QComboBox, QProgressBar,
-    QTreeWidget, QTreeWidgetItem, QScrollArea, QLineEdit,
-    QFileDialog, QMessageBox
-)
-from PyQt5.QtCore import Qt, pyqtSignal, QTimer
-from PyQt5.QtGui import QFont, QColor
+
+from PyQt5.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QStackedWidget
 
 from ..domain.patient import Patient
 from ..domain.action import Action
-from ..decision_engine.engine import DecisionEngine, ActionScore
+from ..decision_engine.engine import DecisionEngine
+
 from .comparison_widget import ComparisonWidget
 from .trend_widget import TrendWidget
-from .sensitivity_panel import SensitivityAnalysisPanel
-from .risk_benefit_plot import RiskBenefitPlot
-from ..infrastructure.database import get_connection, get_state_distribution, log_recommendation, get_all_patients_detailed
-from ..analytics.analytics import state_success_rate
-from ..ui.audit_widget import AuditWidget
+from .audit_widget import AuditWidget
 from .sidebar import Sidebar
 from .dashboard_view import DashboardView
 from .patient_management_view import PatientManagementView
 from .patient_view import PatientView
-
-from .ui_helpers import (
-    SIDEBAR_BG, CONTENT_BG, ACCENT, ACCENT_DARK, CARD_BG, TEXT_PRIMARY, TEXT_MUTED,
-    BORDER, HOVER_ROW, DANGER, SUCCESS, WARNING, SEV_COLORS,
-    RISK_COL_W, _card, _label, _Badge
-)
+from .ui_helpers import CONTENT_BG
 
 # ---------------------------------------------------------------------------
 # Main window
@@ -88,8 +72,13 @@ class MainWindow(QMainWindow):
     def _on_nav_changed(self, idx: int) -> None:
         if idx == 0:
             self._dashboard_view._load_stats()
+        elif idx == 2:
+            self._analytics_view.reload()
+        elif idx == 3:
+            self._trend_view._refresh()
         elif idx == 4:
-            self._audit_view._refresh()
+            self._audit_view.reload()
+
         self._stack.setCurrentIndex(idx)
 
     def _on_patient_selected(self, patient: Patient, actions: list[Action]) -> None:
