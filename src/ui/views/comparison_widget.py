@@ -12,11 +12,13 @@ matplotlib.use('Qt5Agg')
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 
-from ...infrastructure.database import (
-    get_all_patients, get_actions_for_patient,
-    get_action_utility_comparison, get_state_distribution
+from ...application.comparison_service import (
+    get_comparison_patients,
+    get_patient_actions,
+    get_disease_id_by_name,
+    get_action_effectiveness_for_disease,
+    get_population_success_rates,
 )
-from ...analytics.analytics import compare_actions, state_success_rate
 
 
 SIDEBAR_BG = "#1B2A2F"
@@ -125,7 +127,7 @@ class ComparisonWidget(QWidget):
 
     def _load_patients(self):
         """Load patients from database"""
-        self.patients_data = get_all_patients()
+        self.patients_data = get_comparison_patients()
 
         for pid, name, state, disease in self.patients_data:
             display = f"{name} ({pid}) - {disease} - {state}"
@@ -140,14 +142,8 @@ class ComparisonWidget(QWidget):
     def _get_patient_disease(self, patient_id: str) -> str:
         return self.patient_disease_map.get(patient_id, "")
 
-    def _get_disease_id_by_name(self, disease_name: str) -> int:
-        from ...infrastructure.database import get_connection
-        with get_connection() as conn:
-            cursor = conn.execute("SELECT id FROM disease WHERE name = ?", (disease_name,))
-            result = cursor.fetchone()
-            if result:
-                return result[0]
-        return None
+    def _get_disease_id_by_name(self, disease_name: str) -> int | None:
+        return get_disease_id_by_name(disease_name)
 
     def reload(self):
         """Reload patients from the database and reset comparison content."""
@@ -197,8 +193,7 @@ class ComparisonWidget(QWidget):
             placeholder.setStyleSheet(f"color: {TEXT_MUTED};")
             return placeholder
 
-        actions_data = get_action_utility_comparison(disease_id)
-        comparisons = compare_actions(actions_data)
+        comparisons = get_action_effectiveness_for_disease(disease_name)
 
         if not comparisons:
             placeholder = QLabel(f"No action data available for {disease_name}")
@@ -262,8 +257,8 @@ class ComparisonWidget(QWidget):
 
         self._clear_content()
 
-        actions_a = get_actions_for_patient(patient_a_id)
-        actions_b = get_actions_for_patient(patient_b_id)
+        actions_a = get_patient_actions(patient_a_id)
+        actions_b = get_patient_actions(patient_b_id)
 
         tables_row = QWidget()
         tables_row.setMinimumHeight(320)
@@ -365,10 +360,8 @@ class ComparisonWidget(QWidget):
 
         disease_id = self._get_disease_id_by_name(disease_name)
         if disease_id:
-            actions_global = get_action_utility_comparison(disease_id)
-            comparisons = compare_actions(actions_global)
-            distribution = get_state_distribution()
-            success_rates = state_success_rate(distribution)
+            comparisons = get_action_effectiveness_for_disease(disease_name)
+            success_rates = get_population_success_rates()
 
             top_actions_text = "Most Effective Strategies:\n"
             for i, action in enumerate(comparisons[:3], 1):
