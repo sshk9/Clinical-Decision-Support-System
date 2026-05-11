@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 from PyQt5.QtWidgets import (
     QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
@@ -22,95 +20,13 @@ from .risk_benefit_plot import RiskBenefitPlot
 from ..infrastructure.database import get_connection, get_state_distribution, log_recommendation, get_all_patients_detailed
 from ..analytics.analytics import state_success_rate
 from ..ui.audit_widget import AuditWidget
+from .sidebar import Sidebar
 
-
-# ---------------------------------------------------------------------------
-# Colour Paletter - matches Figma teal/mint theme
-# ---------------------------------------------------------------------------
-SIDEBAR_BG    = "#1B2A2F"
-CONTENT_BG    = "#F4F7F7"
-ACCENT        = "#2ABFBF"
-ACCENT_DARK   = "#1FA8A8"
-CARD_BG       = "#FFFFFF"
-TEXT_PRIMARY  = "#111D1D"
-TEXT_MUTED    = "#6B8A8A"
-BORDER        = "#DDE8E8"
-HOVER_ROW     = "#F0FAFA"
-DANGER        = "#C0392B"
-SUCCESS       = "#0D7A5A"
-WARNING       = "#B45309"
-
-RISK_LOW      = ("#E6F7F2", "#0D7A5A")
-RISK_MEDIUM   = ("#FFF8E6", "#B45309")
-RISK_HIGH     = ("#FEF0EF", "#C0392B")
-
-SEV_COLORS    = {
-    1: "#0D7A5A",
-    2: "#56A87A",
-    3: "#B45309",
-    4: "#D9642A",
-    5: "#C0392B",
-}
-
-
-RISK_COL_W  = 120
-BADGE_W     = 80
-BADGE_H     = 26
-
-
-def _card(parent: QWidget | None = None) -> QFrame:
-    frame = QFrame(parent)
-    frame.setStyleSheet(f"""
-        QFrame {{
-            background: {CARD_BG};
-            border-radius: 8px;
-            border: 1px solid {BORDER};
-        }}
-    """)
-    return frame
-
-
-def _label(text: str, size: int = 13, bold: bool = False, muted: bool = False,
-           color: str | None = None) -> QLabel:
-    lbl = QLabel(text)
-    font = QFont("Segoe UI", size)
-    font.setBold(bold)
-    lbl.setFont(font)
-    c = color if color else (TEXT_MUTED if muted else TEXT_PRIMARY)
-    lbl.setStyleSheet(f"color: {c}; background: transparent; border: none;")
-    return lbl
-
-
-class _Badge(QLabel):
-    """Pill-shaped risk badge. Width is set via setFixedWidth, NOT CSS min-width."""
-
-    _PRESETS = {
-        "Low":    RISK_LOW,
-        "Medium": RISK_MEDIUM,
-        "High":   RISK_HIGH,
-    }
-
-    def __init__(self, text: str, parent: QWidget | None = None) -> None:
-        super().__init__(parent)
-        self.set_risk(text)
-
-    def set_risk(self, text: str) -> None:
-        bg, fg = self._PRESETS.get(text, ("#ECECEC", "#555"))
-        self.setText(text)
-        self.setAlignment(Qt.AlignCenter)
-        font = QFont("Segoe UI", 11)
-        font.setBold(True)
-        self.setFont(font)
-        self.setFixedWidth(BADGE_W)
-        self.setFixedHeight(BADGE_H)
-        self.setStyleSheet(f"""
-            QLabel {{
-                background: {bg};
-                color: {fg};
-                border-radius: 12px;
-                border: none;
-            }}
-        """)
+from .ui_helpers import (
+    SIDEBAR_BG, CONTENT_BG, ACCENT, ACCENT_DARK, CARD_BG, TEXT_PRIMARY, TEXT_MUTED,
+    BORDER, HOVER_ROW, DANGER, SUCCESS, WARNING, SEV_COLORS,
+    RISK_COL_W, _card, _label, _Badge
+)
 
 
 # ---------------------------------------------------------------------------
@@ -1194,76 +1110,7 @@ class PatientManagementView(QWidget):
 # ---------------------------------------------------------------------------
 # Sidebar
 # ---------------------------------------------------------------------------
-class Sidebar(QWidget):
-    nav_changed = pyqtSignal(int)
 
-    def __init__(self, parent: QWidget | None = None) -> None:
-        super().__init__(parent)
-        self.setFixedWidth(220)
-        self.setStyleSheet(f"background: #ffffff; border-right: 1px solid #2A3F44;")
-        self._buttons: list[QPushButton] = []
-        self._build()
-
-    def _build(self) -> None:
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(12, 24, 12, 24)
-        layout.setSpacing(8)
-
-        title = _label("  CDSS", 18, bold=True)
-        title.setStyleSheet(f"color: {ACCENT}; background: transparent; border: none; padding: 8px 16px;")
-        layout.addWidget(title)
-        layout.addSpacing(16)
-
-        nav_items = ["Dashboard", "Patient Management", "Analytics", "Trends", "Audit Log"]
-
-        for i, name in enumerate(nav_items):
-            btn = QPushButton(name)
-            btn.setCheckable(True)
-            btn.setFixedHeight(45)
-            btn.setCursor(Qt.PointingHandCursor)
-            btn.setFont(QFont("Segoe UI Variable", 10))
-
-            btn.setStyleSheet(f"""
-                QPushButton {{
-                    background: transparent;
-                    color: #94A3B8;
-                    border: none;
-                    text-align: left;
-                    padding-left: 15px;
-                    border-radius: 8px;
-                    margin: 0px 5px;
-                }}
-                QPushButton:hover {{
-                    background: #1E293B;
-                    color: #F8FAFC;
-                }}
-                QPushButton:checked {{
-                    background: #1E293B;
-                    color:#F8FAFC;
-                }}
-            """)
-
-            btn.clicked.connect(lambda _, idx=i: self._on_nav(idx))
-            layout.addWidget(btn)
-            self._buttons.append(btn)
-
-        layout.addStretch()
-        user_label = _label("  GP User", muted=False)
-        user_label.setStyleSheet(f"color: #A8C4C4; background: transparent; border: none; padding: 8px 16px;")
-        layout.addWidget(user_label)
-
-        self._buttons[0].setChecked(True)
-
-    def _on_nav(self, idx: int) -> None:
-        for i, btn in enumerate(self._buttons):
-            btn.blockSignals(True)
-            btn.setChecked(i == idx)
-            btn.blockSignals(False)
-        self.nav_changed.emit(idx)
-
-    def set_active(self, idx: int) -> None:
-        """Public method to set the active navigation item."""
-        self._on_nav(idx)
 
 
 # ---------------------------------------------------------------------------
