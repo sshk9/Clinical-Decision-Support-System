@@ -17,7 +17,7 @@ The schema supports:
 
 Important persistence boundary:
 
-- Accept / Reject / Override decisions are persisted in `recommendation_run`
+- Accept / Reject / Override decisions are persisted in `recommendation_run` via `src/application/decision_audit_service.py`
 - Apply Action and Simulate Progression are currently in-memory only and are not written back to `patient_status`
 
 ---
@@ -158,7 +158,7 @@ Foreign keys:
 
 Constraint expectation:
 
-For each `(model_id, from_state_id)`, transition probabilities should sum to 1.0. This is validated when constructing the `DiseaseModel`.
+For each `(model_id, from_state_id)`, transition probabilities should sum to 1.0. This is validated when constructing the `DiseaseModel` in the domain layer.
 
 ---
 
@@ -179,7 +179,7 @@ Foreign key:
 
 Important note:
 
-Treatment actions modify the transition matrix, not the patient’s current state directly.
+Treatment actions modify the transition matrix, not the patient's current state directly.
 
 ---
 
@@ -210,7 +210,7 @@ immediate_utility = round(expected_benefit - complication_risk - side_effect_cos
 
 Important note:
 
-This value is computed in `load_actions()` in the infrastructure layer. The decision engine does not compute benefit − risk − cost itself; it consumes the precomputed `Action.immediate_utility`.
+This value is computed in `load_actions()` inside `src/infrastructure/database.py`. The decision engine does not compute `benefit − risk − cost` itself; it consumes the precomputed `Action.immediate_utility`.
 
 ---
 
@@ -266,8 +266,8 @@ Foreign key:
 - `patient_id` → `patient(id)`
 
 Used by:
-- `log_clinician_decision()`
-- `get_audit_log()`
+- `record_clinician_decision()` in `decision_audit_service.py`
+- `get_audit_log()` in `audit_service.py`
 - `AuditWidget`
 
 Important note:
@@ -298,20 +298,20 @@ There is no `role` column in the current schema. Authentication returns only a b
 
 ## Key Query and Conversion Functions
 
-| Function | Tables Used | Purpose |
-|----------|-------------|---------|
-| `init_db()` | all tables | Creates schema if missing |
-| `seed_data()` | all core tables | Seeds demo diseases, patients, actions, utilities, and admin user |
-| `get_user_by_username()` | `users` | Fetches login hash and salt |
-| `create_user()` | `users` | Creates a user with salted password hash |
-| `load_disease_model()` | `patient_status`, `markov_model`, `disease_state`, `markov_transition` | Builds a `DiseaseModel` domain object |
-| `load_actions()` | `patient_status`, `action`, `action_utility` | Builds `Action` domain objects and computes immediate utility |
-| `load_patients_with_actions()` | patient-related tables via service calls | Builds `PatientRecord` objects for the UI |
-| `get_state_distribution()` | `disease`, `disease_state`, `patient_status` | Provides data for population trend charts |
-| `get_benefit_risk_for_patient()` | `patient_status`, `action`, `action_utility` | Provides data for risk-benefit scatter plot |
-| `get_action_utility_comparison()` | `action`, `action_utility` | Provides aggregate action utility comparison |
-| `log_clinician_decision()` | `recommendation_run` | Inserts clinician decision into audit log |
-| `get_audit_log()` | `recommendation_run`, `patient` | Reads clinician decision history |
+| Function | Location | Tables Used | Purpose |
+|----------|----------|-------------|---------|
+| `init_db()` | `infrastructure/database.py` | all tables | Creates schema if missing |
+| `seed_data()` | `infrastructure/database.py` | all core tables | Seeds demo diseases, patients, actions, utilities, admin user |
+| `get_user_by_username()` | `infrastructure/auth_service.py` | `users` | Fetches login hash and salt |
+| `create_user()` | `infrastructure/auth_service.py` | `users` | Creates a user with salted password hash |
+| `load_disease_model()` | `infrastructure/database.py` | `patient_status`, `markov_model`, `disease_state`, `markov_transition` | Builds a `DiseaseModel` domain object |
+| `load_actions()` | `infrastructure/database.py` | `patient_status`, `action`, `action_utility` | Builds `Action` domain objects and computes immediate utility |
+| `load_patients_with_actions()` | `infrastructure/patient_service.py` | patient-related tables | Builds `PatientRecord` objects for the UI |
+| `get_state_distribution()` | called by `trend_service.py` | `disease`, `disease_state`, `patient_status` | Population trend chart data |
+| `get_benefit_risk_for_patient()` | called by `comparison_service.py` | `patient_status`, `action`, `action_utility` | Risk-benefit scatter plot data |
+| `get_action_utility_comparison()` | called by `comparison_service.py` | `action`, `action_utility` | Aggregate action utility comparison |
+| `record_clinician_decision()` | `application/decision_audit_service.py` | `recommendation_run` | Inserts clinician decision into audit log |
+| `get_audit_log()` | `application/audit_service.py` | `recommendation_run`, `patient` | Reads clinician decision history |
 
 ---
 
@@ -322,7 +322,7 @@ The schema supports both persistent and non-persistent workflows.
 ### Persisted
 
 | Workflow | Table |
-|---------|-------|
+|----------|-------|
 | User authentication | `users` |
 | Seeded diseases, states, actions, utilities | `disease`, `disease_state`, `action`, `action_utility` |
 | Current seeded patient state | `patient_status` |
@@ -331,7 +331,7 @@ The schema supports both persistent and non-persistent workflows.
 ### Not Persisted
 
 | Workflow | Current Behaviour |
-|---------|------------------|
+|----------|------------------|
 | Apply Action | Updates `MacroState` in memory only |
 | Simulate Progression | Updates current state in memory only |
 | MacroState history | Stored only in domain object during runtime |
@@ -383,7 +383,7 @@ Most missing features would extend the current schema rather than replace it.
 ## Recommended Future Schema Extensions
 
 | Extension | Purpose |
-|----------|---------|
+|-----------|---------|
 | `treatment_outcome` | Store observed outcomes for calibration |
 | `patient_model_override` | Persist patient-specific transition matrices |
 | `patient_state_history` | Persist simulated or real disease progression |

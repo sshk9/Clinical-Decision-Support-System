@@ -15,7 +15,7 @@ These guidelines describe both the preferred coding style and the current state 
 | Classes | PascalCase | `PatientView`, `DecisionEngine`, `ActionScore` |
 | Functions | snake_case | `get_all_patients()`, `rank_actions()` |
 | Variables | snake_case | `patient_id`, `transition_matrix` |
-| Constants | UPPER_SNAKE_CASE | `SIDEBAR_BG`, `ACCENT`, `THRESHOLD_SAFE` |
+| Constants | UPPER_SNAKE_CASE | `SIDEBAR_BG`, `ACCENT`, `CARD_BG` |
 | Private methods/functions | `_` prefix + snake_case | `_update_trace()`, `_value_iteration()` |
 | Internal attributes | `_` prefix + snake_case | `_patient`, `_current_scores` |
 | Module-level helpers | `_` prefix + snake_case | `_card()`, `_label()` |
@@ -26,18 +26,28 @@ These guidelines describe both the preferred coding style and the current state 
 
 ### Preferred Rule: One Main Class Per File
 
-The preferred structure is one main class per file, especially for domain, engine, infrastructure, and analytics code.
+Each domain, decision-engine, infrastructure, application-service, and analytics module contains a single primary class or a small set of tightly related functions.
 
-Current exception:
+The UI layer is split into focused submodules:
 
-- `main_window.py` currently contains multiple UI classes, including `MainWindow`, `PatientView`, `PatientManagementView`, `DashboardView`, and `Sidebar`.
+```
+ui/
+├── main_window.py    # Application shell and navigation
+├── ui_helpers.py     # Shared colours, label helpers, card helpers
+├── views/            # Full screens (one class per file)
+├── widgets/          # Reusable components (Sidebar, SensitivityAnalysisPanel)
+├── charts/           # Visualisations (RiskBenefitPlot)
+└── dialogs/          # Pop-up dialogs (AddPatient, Login)
+```
 
-This is acceptable for the current prototype but is a known maintainability issue. A future refactor should split these UI classes into separate files.
+### Accepted Exceptions
 
-Small tightly related helper classes may remain in the same file, for example:
+Small, tightly-related helper classes may remain in the same file when separating them would harm clarity:
 
-- `ActionScore` in `engine.py`
-- small UI helper functions such as `_card()` and `_label()`
+| Exception | Justification |
+|-----------|---------------|
+| `ActionScore` in `engine.py` | Closely tied to `DecisionEngine`; never used independently |
+| Tiny UI helper functions in `ui_helpers.py` (`_card()`, `_label()`) | Shared across many UI files; co-locating them avoids cross-imports |
 
 ---
 
@@ -58,9 +68,12 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QWidget, QVBoxLayout
 
 # 3. Internal project imports
-from ..domain.patient import Patient
-from ..domain.action import Action
-from ..decision_engine.engine import DecisionEngine
+from ...domain.patient import Patient
+from ...domain.action import Action
+from ...decision_engine.engine import DecisionEngine
+from ...application.decision_audit_service import record_clinician_decision
+from ..widgets.sensitivity_panel import SensitivityAnalysisPanel
+from ..ui_helpers import ACCENT, CARD_BG, _card, _label
 ```
 
 Rules:
@@ -81,24 +94,30 @@ Exception:
 
 - UI layout/build methods may exceed 50 lines when they are mostly declarative widget construction
 
-Current known issue:
+### Current known issue
 
-- `PatientView._refresh()` is currently a monolithic method of roughly 70 lines.
-- It is not currently split into `_update_ranked_table()`, `_update_risk_display()`, or `_update_history_table()`.
-- This is acceptable for the current prototype but should be treated as a refactor candidate.
+`PatientView._refresh()` in `ui/views/patient_view.py` is currently a single method handling header text, action combo population, ranked-actions scoring, risk display, table rendering, history list, and transition panel updates. This is acceptable for the prototype but is a known refactor candidate.
 
 Recommended future refactor:
 
 ```python
 def _refresh(self) -> None:
+    if self._patient is None:
+        return
+
     self._update_header()
-    self._update_ranked_table()
+    self._update_action_combo()
+    self._current_scores = self._engine.rank_actions(
+        self._patient.macro_state, self._actions
+    )
+    self._update_decision_buttons()
     self._update_risk_display()
+    self._update_ranked_table()
     self._update_history_panel()
     self._update_transition_panel()
 ```
 
-The goal is not to split code mechanically, but to separate different UI update responsibilities when doing so improves readability.
+The engine call stays inline because it is the core orchestration that produces the scores every other update depends on. The goal is not to split mechanically, but to separate distinct UI update responsibilities when doing so improves readability.
 
 ---
 
@@ -144,7 +163,7 @@ def get_connection():
 
 ### Section Dividers
 
-For long files such as `main_window.py`, use section dividers to separate logical areas:
+For long files, use section dividers to separate logical areas:
 
 ```python
 # ---------------------------------------------------------------------------
@@ -154,7 +173,7 @@ For long files such as `main_window.py`, use section dividers to separate logica
 
 ### Inline Comments
 
-Comments should explain why something is done, not simply repeat what the code does.
+Comments should explain *why* something is done, not simply repeat what the code does.
 
 ```python
 # Good — explains why
@@ -253,11 +272,10 @@ def get_benefit_risk_for_patient(patient_id: str) -> list[tuple]:
 
 | Rule | Exception | Justification |
 |------|-----------|---------------|
-| One class per file | `main_window.py` currently contains multiple UI classes | Accepted for prototype; should be refactored later |
-| 50-line limit | UI layout/build methods | Declarative UI layout can be clearer when kept together |
+| 50-line limit | UI layout/build methods | Declarative layout is clearer when kept together |
 | 50-line limit | `PatientView._refresh()` currently exceeds the guideline | Known refactor candidate |
 | One class per file | `ActionScore` in `engine.py` | Closely tied to `DecisionEngine` |
-| No public access to widget internals | `Sidebar.set_active(idx)` is exposed intentionally | Provides a controlled public interface instead of direct internal access |
+| No public access to widget internals | `Sidebar.set_active(idx)` is exposed intentionally | Provides a controlled public interface |
 
 ---
 
@@ -265,10 +283,10 @@ def get_benefit_risk_for_patient(patient_id: str) -> list[tuple]:
 
 The following code-style issues are known and should be addressed in future work:
 
-1. Split `main_window.py` into separate UI modules.
-2. Break `PatientView._refresh()` into smaller helper methods.
-3. Remove unused dependencies from `requirements.txt`.
-4. Decide whether `_build_explanation()` should be displayed in the UI or removed.
+1. Break `PatientView._refresh()` into smaller helper methods.
+2. Remove unused dependencies from `requirements.txt`.
+3. Decide whether `_build_explanation()` output should be surfaced in the UI directly or simplified.
+4. Add automated tests for the decision engine and services.
 5. Keep documentation aligned with actual code structure.
 
 ---
