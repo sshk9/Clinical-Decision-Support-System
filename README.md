@@ -67,42 +67,52 @@ The demo user is automatically created when you run `python main.py`.
 
 ```
 Clinical-Decision-Support-System/
-├── main.py                          # Entry point
-├── requirements.txt                 # Dependencies
-├── cdss.db                          # SQLite database (auto‑generated)
-├── README.md                        # This file
-├── docs/                            # Documentation
-│   ├── code_style.md
+├── main.py
+├── requirements.txt
+├── cdss.db
+├── README.md
+├── .gitignore
+├── docs/
 │   ├── architecture.md
+│   ├── code_style.md
 │   ├── database_schema.md
-│   └── decision_engine.md
+│   ├── decision_engine.md
+│   └── tdd.md
 ├── src/
-│   ├── ui/                          # Presentation layer
-│   │   ├── main_window.py
-│   │   ├── login_view.py
-│   │   ├── comparison_widget.py
-│   │   ├── trend_widget.py
-│   │   ├── add_patient_dialog.py
-│   │   ├── audit_widget.py
-│   │   ├── risk_benefit_plot.py
-│   │   ├── add_patient_dialog_.py
-│   │   └── sensitivity_panel.py
-│   ├── decision_engine/             # MDP engine
+│   ├── __init__.py
+│   ├── analytics/
+│   ├── application/
+│   │   ├── __init__.py
+│   │   ├── audit_service.py
+│   │   ├── comparison_service.py
+│   │   ├── dashboard_service.py
+│   │   ├── decision_audit_service.py
+│   │   ├── patient_management_service.py
+│   │   └── trend_service.py
+│   ├── decision_engine/
+│   │   ├── __init__.py
 │   │   └── engine.py
-│   ├── domain/                      # Domain model layer
-│   │   ├── disease_model.py
+│   ├── domain/
+│   │   ├── __init__.py
 │   │   ├── action.py
+│   │   ├── disease_model.py
 │   │   ├── macro_state.py
 │   │   ├── patient.py
 │   │   └── patient_record.py
-│   ├── infrastructure/              # Infrastructure layer
-│   │   ├── database.py
+│   ├── infrastructure/
+│   │   ├── __init__.py
 │   │   ├── auth_service.py
+│   │   ├── database.py
 │   │   └── patient_service.py
-│   └── analytics/                   # Pure analytics
-│       └── analytics.py
-└── tests/                           # Unit tests
-    └── test_basic.py
+│   └── ui/
+│       ├── __init__.py
+│       ├── main_window.py
+│       ├── ui_helpers.py
+│       ├── charts/
+│       ├── dialogs/
+│       ├── views/
+│       └── widgets/
+└── tests/
 ```
 
 ## How to Use
