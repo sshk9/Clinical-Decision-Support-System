@@ -40,10 +40,7 @@ venv\Scripts\activate
 ```bash
 pip install -r requirements.txt
 ```
-3. **Create the Database**
-```bash
-python -m src.infrastructure.database
-```
+
 4. **Run the Application**
 ```
 python main.py
