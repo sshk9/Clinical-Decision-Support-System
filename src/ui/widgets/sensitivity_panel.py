@@ -76,7 +76,7 @@ class SensitivityAnalysisPanel(QWidget):
 
         card_layout.addSpacing(20)
 
-        # --- Risk Tolerance (±) ---
+        # --- Risk Penalty Weight (±) ---
         risk_label = QLabel("RISK PENALTY WEIGHT")
         risk_label.setStyleSheet(f"color: {TEXT_MUTED}; font-size: 10px; font-weight: 800; letter-spacing: 1px;")
         card_layout.addWidget(risk_label)
