@@ -61,7 +61,7 @@ python main.py
 |----------|----------|
 | admin | admin123|
 
-The demo user is automatically created when you run `database.py`. 
+The demo user is automatically created when you run `python main.py`. 
 
 ## Project Structure
 
