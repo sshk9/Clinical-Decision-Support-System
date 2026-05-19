@@ -384,6 +384,55 @@ Mild CKD -> Severe CKD:  0.200 -> 0.080  down
 
 ---
 
+### 4.11 Apply Action and Simulate Progression
+
+The system distinguishes between two distinct runtime operations, reflecting the conceptual two-player formulation introduced in the Business Requirements Document, in which the disease evolves under the influence of two actors: *Nature* and the *Decision Maker*.
+
+#### Apply Action — the Decision Maker's move
+
+`Apply Action` represents the action of the General Practitioner. It corresponds to the macro-level move of the Decision Maker, who selects a treatment in order to influence the patient's prospective disease trajectory.
+
+Formally, applying an action α to the patient macro-state (P, s) yields:
+
+```
+α : (P, s) -> (P_α, s)
+```
+
+That is, the action modifies the disease transition matrix `P -> P_α`, while the current disease state `s` remains unchanged. The operation therefore alters the *probabilities* of future transitions, but does not in itself move the patient to a new state. This reflects the clinical interpretation that prescribing a treatment changes the likelihood of future health outcomes, rather than producing an immediate transition.
+
+Within the implementation, `Apply Action` updates the in-memory transition matrix held by the patient's domain object and records the applied action in the runtime action history, where it is subsequently consumed by the Transition Impact panel.
+
+#### Simulate Progression — Nature's move
+
+`Simulate Progression` represents the move of Nature. It models the non-deterministic evolution of the disease over time, in accordance with the Markov-chain formulation of disease progression.
+
+Formally, given the current macro-state (P, s), Nature samples the next state `s'` from the probability distribution defined by the row of P corresponding to s:
+
+```
+s' ~ P(· | s)
+```
+
+The sampled state `s'` then replaces `s` as the patient's current disease state. The transition matrix P itself remains unchanged by this operation, as it represents the underlying disease dynamics rather than an immediate outcome.
+
+The implementation draws the next state using a weighted random selection over the candidate next states, with weights given by the corresponding transition probabilities. As a result, repeated invocations of `Simulate Progression` from the same starting state may yield different outcomes, in accordance with the intended probabilistic semantics.
+
+#### Rationale for non-deterministic progression
+
+The decision to sample the next state stochastically, rather than selecting the most probable state deterministically, is deliberate and reflects the project's underlying modelling assumptions:
+
+- Disease progression in real patients is inherently uncertain. A deterministic "most likely next state" would obscure the variability that the Markov model is intended to capture.
+- The two-player framing requires Nature to behave as a genuine source of uncertainty. Were Nature to select outcomes deterministically, the Decision Maker would be operating against a predictable adversary, which would undermine the purpose of value iteration and expected-utility ranking.
+- Stochastic sampling enables the system to demonstrate, over repeated simulations, that aggregate outcomes converge toward the real-world distributions encoded in the transition matrix — a property aligned with the success criteria stated in the BRD.
+
+#### Summary of the distinction
+
+| Operation | Modifies | Leaves unchanged | Conceptual role |
+|-----------|----------|------------------|-----------------|
+| Apply Action | Transition matrix P | Current state s | Decision Maker's move |
+| Simulate Progression | Current state s | Transition matrix P | Nature's move |
+
+This separation ensures that the effect of clinical decisions and the effect of disease evolution remain analytically distinct within the system, even though both operations contribute to the patient's overall trajectory.
+
 ## 5. Data Flow Within the System
 
 ### 5.1 Database Initialisation
