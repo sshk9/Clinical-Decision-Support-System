@@ -330,6 +330,8 @@ Immediate Utility = benefit - risk - cost
 
 In the current implementation, the decision engine consumes `action.immediate_utility`. This keeps the engine independent from database-specific calculation details.
 
+**Simplification.** Immediate utility is presently defined per action and is therefore independent of the patient's current disease state `s`. The same action α is assigned the same immediate utility regardless of whether the patient is in a Normal, Mild, or Severe state. This is a deliberate prototype simplification and does not fully reflect clinical reality, in which the short-term usefulness of a treatment typically depends on the patient's current condition. For example, prescribing metformin would be expected to yield substantially different immediate utility for a patient in a Normal state compared with a patient in a Prediabetic or Diabetic state. A clinically faithful formulation would compute immediate utility as `r(s, α)` rather than `r(α)`. This limitation is restated in §8.1 and revisited in §8.2.
+
 ### 4.6 Total Score
 
 The total score combines immediate utility with discounted expected future value:
@@ -620,17 +622,19 @@ The system is an academic prototype and should not be used for real clinical dec
 8. Authentication is simple and does not include full role-based access control.
 9. The system is a desktop prototype, not a web or hospital-integrated system.
 10. More automated tests should be added.
+11. Immediate utility is defined per action and is therefore independent of the patient's current disease state. The same action returns the same immediate utility regardless of whether the patient is currently in a healthy or an advanced state. This does not fully reflect clinical reality, in which the short-term usefulness of a treatment typically depends on the patient's condition (for instance, the utility of prescribing metformin differs substantially between a Normal, Prediabetic, and Diabetic patient).
 
 ### 8.2 Recommended Future Improvements
 
-11. Persist applied actions and simulated progression.
-12. Improve risk scoring with clinically meaningful parameters.
-13. Add learning/calibration from observed patient outcomes.
-14. Split `database.py` into repository modules.
-15. Add more automated tests for the decision engine and services.
-16. Add role-based access control.
-17. Add export/reporting functionality for recommendations.
-18. Prepare the architecture for possible web migration.
+12. Persist applied actions and simulated progression.
+13. Improve risk scoring with clinically meaningful parameters.
+14. Add learning/calibration from observed patient outcomes.
+15. Split `database.py` into repository modules.
+16. Add more automated tests for the decision engine and services.
+17. Add role-based access control.
+18. Add export/reporting functionality for recommendations.
+19. Prepare the architecture for possible web migration.
+20. Extend immediate utility to be state-dependent — that is, compute `r(s, α)` in place of `r(α)` — so that the short-term usefulness of an action reflects the patient's current disease state. This would also require extending the action data model and seed data to carry per-state utility values rather than a single scalar.
 
 ---
 
